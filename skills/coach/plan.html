@@ -1,0 +1,209 @@
+<!doctype html>
+<!--
+  Plan PDF template: exactly 2 A4 pages. Page 1: header, note, one-line summary, training. Page 2: food, swaps, limits, cardio, every week.
+  Copy it, replace the example content with the user's plan in the user's language, keep the CSS and structure.
+  Plain words only: no jargon (RIR, compound, progression scheme), no "~", no filler. Remove sections that don't apply.
+  The NOTE box always stays. The figure in the header is the user's level figure from ascii.md.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>My plan</title>
+<style>
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  html, body { margin: 0; background: #d5d2c6; color: #16161a; }
+  body { font: 10pt/1.5 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  .sheet { width: 210mm; min-height: 296mm; padding: 10mm 15mm 10mm; break-after: page; display: flex; flex-direction: column; }
+  .sheet:last-child { break-after: auto; }
+  .mono, h1, h2, pre { font-family: "IBM Plex Mono", "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace; }
+
+  .runhead { display: flex; align-items: center; gap: 3mm; margin-bottom: 6mm; }
+  .runhead img { height: 5mm; }
+  .runhead hr { flex: 1; border: 0; border-top: 1px solid #16161a; margin: 0; }
+  .runhead span { font: 8pt "IBM Plex Mono", ui-monospace, Menlo, monospace; letter-spacing: 0.04em; }
+  .top { display: grid; grid-template-columns: 1fr 56mm; border: 1.6px solid #16161a; margin-bottom: 5mm; }
+  .top > div { padding: 4mm 6mm; }
+  .top > div + div { border-left: 1.6px solid #16161a; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  h1 { font-size: 28pt; line-height: 1.05; margin: 0 0 3mm; letter-spacing: -0.02em; }
+  .tagline { font: italic 9.5pt/1.3 "IBM Plex Mono", ui-monospace, Menlo, monospace; margin: 0; }
+  pre { font-size: 9pt; line-height: 1.1; margin: 0 0 1mm; color: #d97757; }
+  .owner { font: 600 8.5pt/1 "IBM Plex Mono", ui-monospace, Menlo, monospace; letter-spacing: 0.12em; text-transform: uppercase; margin: 0 0 3mm; }
+  .level { font: 600 8pt/1 "IBM Plex Mono", ui-monospace, Menlo, monospace; letter-spacing: 0.12em; color: #d97757; }
+
+  .notice { border: 1.6px dashed #16161a; padding: 3mm 4mm; margin: 0 0 6mm; font-size: 9pt; }
+  .notice b { font: 600 8.5pt "IBM Plex Mono", ui-monospace, Menlo, monospace; letter-spacing: 0.08em; margin-right: 2mm; }
+  .lead { font: 600 10pt/1.4 "IBM Plex Mono", ui-monospace, Menlo, monospace; text-align: center; margin: 0 0 6mm; }
+  h2 { font-size: 19pt; margin: 4mm 0 2.5mm; }
+  h3 { font-size: 10pt; margin: 0 0 1.5mm; text-decoration: underline; text-underline-offset: 2px; }
+  p { margin: 0 0 3mm; }
+
+  .days { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm 8mm; }
+  .check { list-style: none; padding: 0; margin: 0 0 3mm; }
+  .check li { display: flex; justify-content: space-between; align-items: baseline; gap: 3mm; padding: 0.7mm 0; border-bottom: 1px solid #16161a26; }
+  .reps { font: 9pt "IBM Plex Mono", ui-monospace, Menlo, monospace; white-space: nowrap; }
+  .note { font-size: 8.5pt; }
+
+  .rules { padding-left: 4.5mm; margin: 0 0 3mm; }
+  .rules li { margin-bottom: 1mm; }
+
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7mm; margin-top: 2mm; }
+  .steps b { display: block; font: 600 9.5pt "IBM Plex Mono", ui-monospace, Menlo, monospace; margin-bottom: 1.5mm; }
+  .steps b span { font-weight: 400; }
+  .steps p { font-size: 9pt; }
+
+  .meals { width: 100%; border-collapse: collapse; margin-bottom: 3mm; }
+  .meals td { padding: 1.6mm 0; border-bottom: 1px solid #16161a33; vertical-align: baseline; }
+  .meals td:first-child { font-weight: 600; width: 20mm; }
+  .meals td:last-child { font-variant-numeric: tabular-nums; text-align: right; width: 22mm; white-space: nowrap; }
+  .swaps { list-style: none; padding: 0; margin: 0 0 3mm; }
+  .swaps li { padding: 1mm 0; border-bottom: 1px solid #16161a26; }
+  .swaps i { font-style: normal; font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; padding: 0 1.5mm; }
+  .runfoot { display: flex; align-items: center; gap: 3mm; margin-top: auto; padding-top: 4mm; }
+  .runfoot img { height: 5mm; }
+  .runfoot hr { flex: 1; border: 0; border-top: 1px solid #16161a; margin: 0; }
+  .runfoot span { font: 8pt "IBM Plex Mono", ui-monospace, Menlo, monospace; letter-spacing: 0.04em; }
+</style>
+</head>
+<body>
+
+<div class="sheet">
+  <div class="runhead"><img src="mascot.png" alt=""><hr><span>my-fitness-claw</span></div>
+  <div class="top">
+    <div>
+      <p class="owner">Sam's plan</p>
+      <h1>Lean out<br>by Jun 1</h1>
+      <p class="tagline">64 kg → 61 kg. A little every week.</p>
+    </div>
+    <div>
+<pre>         _
+        /"\
+       /o o\
+  _\/  \   /  \/_
+   \\._/  /_.//
+   `--,  ,----'
+     /   /</pre>
+      <div class="level">GRINDER</div>
+    </div>
+  </div>
+
+  <p class="notice"><b>NOTE</b>This plan is a starting point made by AI. It does not replace a dietitian, a coach or a doctor. If you have an illness, an injury or frequent pain, talk to one of them before you start.</p>
+
+  <p class="lead">4 workouts, 1,600 kcal and 8k steps a day.</p>
+
+  <h2>Training</h2>
+  <p>Stop each set when you could do only 1 or 2 more reps.</p>
+
+  <div class="days">
+    <div>
+      <h3>Monday · Upper A</h3>
+      <ul class="check">
+        <li>Bench press <span class="reps">3 × 5-8</span></li>
+        <li>Chest-supported row <span class="reps">3 × 6-10</span></li>
+        <li>Shoulder press <span class="reps">3 × 8-12</span></li>
+        <li>Lat pulldown <span class="reps">3 × 8-12</span></li>
+        <li>Lateral raise <span class="reps">3 × 12-20</span></li>
+        <li>Rope pushdown <span class="reps">2 × 10-15</span></li>
+        <li>Barbell curl <span class="reps">2 × 10-15</span></li>
+      </ul>
+    </div>
+    <div>
+      <h3>Tuesday · Lower A</h3>
+      <ul class="check">
+        <li>Romanian deadlift <span class="reps">3 × 6-10</span></li>
+        <li>Leg press <span class="reps">3 × 10-15</span></li>
+        <li>Lying leg curl <span class="reps">3 × 10-15</span></li>
+        <li>Hip thrust <span class="reps">3 × 8-12</span></li>
+        <li>Standing calf raise <span class="reps">3 × 10-15</span></li>
+        <li>Cable crunch <span class="reps">2 × 10-15</span></li>
+      </ul>
+    </div>
+    <div>
+      <h3>Thursday · Upper B</h3>
+      <ul class="check">
+        <li>Incline press <span class="reps">3 × 8-12</span></li>
+        <li>Pull-up <span class="reps">3 × 6-10</span></li>
+        <li>Seated row <span class="reps">3 × 10-12</span></li>
+        <li>Peck deck <span class="reps">2 × 12-15</span></li>
+        <li>Lateral raise <span class="reps">3 × 12-20</span></li>
+        <li>Overhead extension <span class="reps">2 × 10-15</span></li>
+        <li>Hammer curl <span class="reps">2 × 10-15</span></li>
+      </ul>
+    </div>
+    <div>
+      <h3>Friday · Lower B</h3>
+      <ul class="check">
+        <li>Heavy hip thrust <span class="reps">3 × 6-10</span></li>
+        <li>Seated leg curl <span class="reps">3 × 10-15</span></li>
+        <li>Leg press, feet high <span class="reps">3 × 10-15</span></li>
+        <li>Leg extension <span class="reps">2 × 12-15</span></li>
+        <li>Hip abduction <span class="reps">2 × 12-20</span></li>
+        <li>Seated calf raise <span class="reps">3 × 10-15</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>When to add weight</h3>
+  <ul class="rules">
+    <li>Hit the top of the rep range on every set? Add weight next time.</li>
+    <li>First week: go a little lighter than usual and focus on form.</li>
+    <li>On a diet, keeping your weights is already a win.</li>
+  </ul>
+  <div class="runfoot"><span>not a replacement for a health professional</span><hr><img src="mascot.png" alt=""></div>
+</div>
+
+<div class="sheet">
+  <div class="runhead"><img src="mascot.png" alt=""><hr><span>my-fitness-claw</span></div>
+  <h2 style="margin-top:0">Food</h2>
+  <p>1,600 kcal a day, with 130 g of protein.</p>
+
+  <table class="meals">
+    <tr><td>Breakfast</td><td>2 slices of bread, 2 eggs and 1 slice of cheese</td><td>400 kcal</td></tr>
+    <tr><td>Lunch</td><td>Eating out: half a plate of salad, a palm of protein, a fist of carbs</td><td>600 kcal</td></tr>
+    <tr><td>Snack</td><td>1 protein yogurt and 1 fruit</td><td>200 kcal</td></tr>
+    <tr><td>Dinner</td><td>100 g of rice, 150 g of chicken or fish and vegetables</td><td>550 kcal</td></tr>
+  </table>
+
+  <h3>Swaps</h3>
+  <ul class="swaps">
+    <li>150 g chicken <i>=</i> 130 g lean beef <i>=</i> 170 g fish</li>
+    <li>100 g rice <i>=</i> 90 g pasta <i>=</i> 170 g potato <i>=</i> 1 bread roll</li>
+    <li>100 g beans <i>=</i> 100 g lentils</li>
+    <li>1 scoop whey <i>=</i> 1 protein yogurt <i>=</i> 100 g chicken</li>
+    <li>1 slice of cheese <i>=</i> 1 tbsp cream cheese</li>
+  </ul>
+  <p class="note">Weigh everything cooked.</p>
+
+  <h3>Free meal</h3>
+  <p>Once a week, instead of dinner. A burger with a diet soda fits easily.</p>
+
+  <h3>Lower back</h3>
+  <ul class="rules">
+    <li>Brace before every lift and keep the bar close to the body.</li>
+    <li>If it aches, swap barbell rows for chest-supported rows and Romanian deadlifts for hip thrusts.</li>
+  </ul>
+
+  <h3>Cardio</h3>
+  <p>Cycling 2 times a week, 30 to 40 minutes at a pace where you can still talk.</p>
+
+  <h2>Every week</h2>
+  <div class="steps">
+    <div>
+      <b>Step 1 <span>· Weigh</span></b>
+      <p>Every morning, after the bathroom. The weekly average counts, not the daily number.</p>
+    </div>
+    <div>
+      <b>Step 2 <span>· Compare</span></b>
+      <p>The average should drop about 0.25 kg a week, down to 61 by Jun 1.</p>
+    </div>
+    <div>
+      <b>Step 3 <span>· Adjust</span></b>
+      <p>Dropped less than 0.2 kg? Cut a little rice or add a cycling session. The first week does not count.</p>
+    </div>
+  </div>
+
+  <div class="runfoot"><span>not a replacement for a health professional</span><hr><img src="mascot.png" alt=""></div>
+</div>
+
+</body>
+</html>

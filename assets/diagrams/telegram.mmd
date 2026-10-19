@@ -1,0 +1,35 @@
+%% Regenerate the PNG: https://mermaid.ink/img/<base64url of this file>?type=png&width=1100, then flatten on white.
+%%{init: {'themeVariables': {'edgeLabelBackground': '#ffffff'}}}%%
+flowchart TB
+  YOU(["📱 You, on Telegram"])
+
+  subgraph telegram["Telegram"]
+    MGR["Clawdino manager<br/>@clawdino_coach_bot"]
+    API["Your bot<br/>@clawdino_1234_bot"]
+  end
+
+  subgraph pc["💻 Your computer"]
+    TERM["Claude Code<br/>terminal"]
+    BOT["Claude Code<br/>bot session"]
+    MFC["my-fitness-claw<br/>coach · setup · connect"]
+    DATA[("~/my-fitness<br/>profile · plan · log")]
+  end
+
+  APPS["Hevy · Garmin"]
+
+  YOU -.->|"① tap to create your bot"| MGR
+  MGR -.->|"② bot token, once"| TERM
+  YOU <-->|"③ chat every day"| API
+  API <-->|"④ messages"| BOT
+  BOT -->|"⑤ runs"| MFC
+  TERM -->|"runs"| MFC
+  MFC <-->|"⑥ reads and writes"| DATA
+  APPS -->|"⑦ workouts, sleep"| MFC
+
+  classDef core fill:#d97757,stroke:#d97757,color:#fff
+  classDef once stroke-dasharray: 5 5
+  class MFC core
+  class MGR once
+  classDef default fill:#fff,stroke:#bbb,color:#222
+  style telegram fill:#fff,stroke:#ddd
+  style pc fill:#fff,stroke:#ddd

@@ -1,0 +1,6 @@
+# Text files keep LF endings, also when cloned on Windows with core.autocrlf: the hooks and scripts are sh.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.ogg binary
+*.pdf binary

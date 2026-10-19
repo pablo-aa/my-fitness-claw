@@ -1,0 +1,28 @@
+#!/bin/sh
+# A claude that is not signed in, as for someone who only uses the desktop app (its login isn't shared): for
+# test/simulate.mjs --no-login. `auth login` signs in at once, after which it says the plan in MFC_FAKE_PLAN
+# (after a logout, a personal one). Anything else goes to the real claude.
+# The state lives in the file MFC_FAKE_STATE.
+here=$(cd "$(dirname "$0")" && pwd)
+real=$(PATH=$(printf '%s' "$PATH" | tr ':' '\n' | grep -vx "$here/*" | paste -sd: -) command -v claude)
+case $real in '' | "$here"/*) echo "no other claude on PATH" >&2; exit 1 ;; esac
+state=${MFC_FAKE_STATE:?MFC_FAKE_STATE is not set}
+
+case "$1 $2" in
+  "auth login"*)
+    echo "Opening your browser to sign in..."
+    sleep 2
+    if [ -f "$state.out" ]; then echo pro > "$state"; else echo "${MFC_FAKE_PLAN:-pro}" > "$state"; fi
+    echo "Login successful."
+    exit 0 ;;
+  "auth logout"*) rm -f "$state"; touch "$state.out"; echo "Successfully logged out."; exit 0 ;;
+  "auth status"*)
+    [ -f "$state" ] || { printf '{\n  "loggedIn": false,\n  "authMethod": "none"\n}\n'; exit 1; }
+    printf '{\n  "loggedIn": true,\n  "authMethod": "claude.ai",\n  "subscriptionType": "%s"\n}\n' "$(cat "$state")"
+    exit 0 ;;
+  "daemon stop"*) exit 0 ;;
+esac
+case $1 in
+  -p | --print) [ -f "$state" ] || { echo "Not logged in · Please run /login"; exit 1; } ;;
+esac
+exec "$real" "$@"

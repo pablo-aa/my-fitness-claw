@@ -1,0 +1,1 @@
+{"session_id":"test","prompt":"<channel source=\"plugin:telegram:telegram\" chat_id=\"1\" message_id=\"3\" user=\"sam\" user_id=\"1\" ts=\"2026-06-01T08:01:00.000Z\" attachment_kind=\"voice\" attachment_file_id=\"AwACAgEAAxkBAAMtest\" attachment_size=\"9973\" attachment_mime=\"audio/ogg\">(voice message)</channel>"}

@@ -1,0 +1,8 @@
+research/
+.DS_Store
+events.jsonl
+.env
+node_modules/
+*.pdf
+simulation.txt
+CLAUDE.local.md

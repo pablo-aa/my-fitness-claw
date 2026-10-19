@@ -1,0 +1,31 @@
+%% Regenerate the PNG: https://mermaid.ink/img/<base64url of this file>?type=png&width=1100, then flatten on white.
+%%{init: {'themeVariables': {'edgeLabelBackground': '#ffffff'}}}%%
+flowchart TB
+  YOU(["🙋 You"])
+
+  subgraph talk["Talk anywhere"]
+    TERM["💻 Claude Code<br/>terminal"]
+    TG["📱 Telegram<br/>your own bot"]
+  end
+
+  COACH["🏋️ Clawdino, your coach<br/>my-fitness-claw"]
+
+  EVID["📚 Science<br/>peer-reviewed evidence"]
+  APPS["⌚ Your apps<br/>Hevy · Garmin"]
+
+  DATA[("📁 ~/my-fitness<br/>profile · plan · log<br/>on your computer")]
+  PDF["📄 Your plan<br/>training + diet"]
+
+  YOU --> TERM
+  YOU --> TG
+  TERM --> COACH
+  TG --> COACH
+  EVID --> COACH
+  APPS --> COACH
+  COACH <--> DATA
+  COACH --> PDF
+
+  classDef core fill:#d97757,stroke:#d97757,color:#fff
+  class COACH core
+  classDef default fill:#fff,stroke:#bbb,color:#222
+  style talk fill:#fff,stroke:#ddd

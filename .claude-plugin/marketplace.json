@@ -1,0 +1,15 @@
+{
+  "name": "my-fitness-claw",
+  "description": "Clawdino, a personal fitness coach for Claude Code.",
+  "owner": {
+    "name": "Pablo Arruda",
+    "url": "https://github.com/pablo-aa"
+  },
+  "plugins": [
+    {
+      "name": "my-fitness-claw",
+      "description": "Clawdino, your science-based AI gym bro: training, diet and progress in plain files, on Claude Code and Telegram.",
+      "source": "./"
+    }
+  ]
+}
