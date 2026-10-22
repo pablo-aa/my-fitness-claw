@@ -7,5 +7,5 @@ The public plugin repo.
 - Personal fitness data lives in each user's own fitness folder, never in this repo.
 - Everything in this repo is in English, one sentence per line in Markdown.
 - Run `sh scripts/test.sh` after changing hooks, scripts or the server.
-- Each rule lives in one place: coach behavior in `skills/coach/`, Telegram replies in `skills/coach/telegram.md`, connection steps in `skills/connect/`, commands in `scripts/` and `hooks/`.
+- Each rule lives in one place: coach behavior in `skills/coach/`, Telegram replies in `skills/coach/telegram.md`, WhatsApp replies in `skills/coach/whatsapp.md`, connection steps in `skills/connect/`, commands in `scripts/` and `hooks/`.
 - A release bumps `version` in `.claude-plugin/plugin.json` only.

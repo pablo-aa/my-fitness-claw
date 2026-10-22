@@ -237,14 +237,17 @@ To point out one option, wrap its description at 19 columns and put `←` on its
 │ 1  Telegram     talk to me from     ←  │
 │                 your phone             │
 │                                        │
-│ 2  Hevy         I pull your workouts   │
+│ 2  WhatsApp     talk to me on          │
+│                 WhatsApp               │
+│                                        │
+│ 3  Hevy         I pull your workouts   │
 │                 (Hevy Pro)             │
 │                                        │
-│ 3  Garmin ✓     steps, sleep, weight   │
+│ 4  Garmin ✓     steps, sleep, weight   │
 │                                        │
-│ 4  Other watch  send me a screenshot   │
+│ 5  Other watch  send me a screenshot   │
 │                                        │
-│ 5  Server       always on, on your     │
+│ 6  Server       always on, on your     │
 │                 own Linux server       │
 │                                        │
 ├────────────────────────────────────────┤

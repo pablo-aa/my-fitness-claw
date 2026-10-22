@@ -37,7 +37,7 @@ Write `- Language:` (the language they write in) and `- Usage stats: on` or `off
 If they picked Telegram, connect it following `<this skill's base directory>/../connect/SKILL.md`: once the bot is running it says hello on the phone by itself, and the setup goes on there.
 Otherwise go on here.
 
-On Telegram, the setup starts with the bot's hello, which asks their name and what they want to change.
+On Telegram or WhatsApp, the setup starts with the bot's hello, which asks their name and what they want to change.
 Right after they answer, ask there with buttons (see Choices), one per message, whichever of the second and third questions `profile.md` doesn't answer yet (no `Brings own plan.` or `Builds a new plan.` note, an empty `Usage stats:`), before anything else.
 
 ## 3. Get to know the user
@@ -59,7 +59,7 @@ Then go through these topics in the user's language, showing each visual at its 
 
 With their own plan, follow Own plan below instead of topics 4 and 5.
 Each time you show a card, save what you know so far: the goal in `plan.md` under `## Goal`, the weight in `profile.md`'s body composition table, the history, injuries and preferences in their `profile.md` sections, and the fields at the top of `profile.md` except `Name`.
-Edit those fields one by one, never rewriting the block: on Telegram the terminal session may have written `Connections:` there.
+Edit those fields one by one, never rewriting the block: on the phone the terminal session may have written `Connections:` there.
 `Name` is written last, with the plan: a `Name` means the setup is done.
 If `profile.md` already has answers but no `Name`, the setup was interrupted: say so in one line and pick up from what is missing.
 
@@ -79,7 +79,7 @@ The user sets the pace, not this list.
 When the answer is one of a few options, let them tap instead of type, with the recommended option first:
 
 - In a terminal, with the `AskUserQuestion` tool.
-- On Telegram, with buttons (see Buttons in `<this skill's base directory>/../coach/telegram.md`).
+- On Telegram, with buttons (see Buttons in `<this skill's base directory>/../coach/telegram.md`); on WhatsApp, with the `ask` tool (`whatsapp.md` there).
 
 ### Safety check
 
@@ -144,13 +144,13 @@ Then, in one message, built from `plan.md` so it matches the PDF:
 3. Today's first step: one small thing they can do today (check the weekday with `date`).
 4. How daily use works, in three short lines: just talk ("trained today", "had pizza", "64.2"); no message about food means the plan was followed; anything can change, just ask (the plan, the level, how I talk, or a plan of their own).
 
-On Telegram, send the PDF with one line, then the week card in its Telegram form, then the rest as short messages.
+On Telegram or WhatsApp, send the PDF with one line, then the week card in its Telegram form, then the rest as short messages.
 
 ## 5. Close
 
 End the plan message with one line offering the last step, so they have something to answer:
 
-- On Telegram, check-ins: a message every morning with the day's training, and a review on Monday, with buttons ("Yes, at 8:00", "Yes, at 7:00", "No").
+- On Telegram or WhatsApp, check-ins: a message every morning with the day's training, and a review on Monday, with buttons ("Yes, at 8:00", "Yes, at 7:00", "No").
   Write `- Check-ins: 08:00` (their time) or `off` in `profile.md`, then schedule the next one (Check-ins in `<this skill's base directory>/../coach/telegram.md`).
 - In a terminal, connections, e.g. "want me on your phone, or pulling your workouts from an app?" (on Windows, the phone needs a Linux server).
   If they say yes, show the connections card, pointing out the one that fits them best, and connect what they pick following `<this skill's base directory>/../connect/SKILL.md`.

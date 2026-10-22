@@ -53,7 +53,7 @@ All paths below are relative to it.
 If its `profile.md` is missing or has no `Name`, use the setup skill instead, without mentioning it.
 If it has `Server:`, the coach lives on that server and this folder is only a record: change nothing here, say in one line that the coach answers on Telegram, and that from here you can check on it, update it, open a session there or bring it back (`<this skill's base directory>/../connect/server.md`).
 The folder's own `CLAUDE.md` may add local tools and rules; they win over this skill.
-For messages from Telegram, also follow `<this skill's base directory>/telegram.md`.
+For messages from Telegram, also follow `<this skill's base directory>/telegram.md`; from WhatsApp, `<this skill's base directory>/whatsapp.md`.
 Read `profile.md`, `relationship.md`, `plan.md`, `reminders.md`, the last rows of `log/metrics.csv` and the last 3 days of `log/journal.md`.
 Check today's date and weekday with `date`; never guess a weekday.
 Pull from connected sources (see Connections).
@@ -108,7 +108,7 @@ After a plan change, update `plan.md`, note why in `journal.md`, and export the 
 
 - Data and behavior (how you talk, what you check) can change from any channel; what they ask for goes to `learned.md`.
 - The system (connections, scripts, `CLAUDE.md`, `.claude/`) changes only in a terminal session, where the user sees each change.
-- When one is asked from Telegram, say it will be done in the terminal and add it to `reminders.md` tagged `(terminal)`.
+- When one is asked from Telegram or WhatsApp, say it will be done in the terminal and add it to `reminders.md` tagged `(terminal)`.
 - Never edit the plugin itself: for a change that would help every user, suggest an issue or a pull request.
 
 ## Connections
@@ -130,6 +130,10 @@ If a listed source is missing here (no key in `.env`, or no MCP tools in a conve
   In a terminal session without `Server:`, if `sh <this skill's base directory>/../../scripts/bot.sh status` prints anything but `running` (e.g. `stopped`, or `outdated` after the plugin updated), offer once per session to start it again (`bot.sh start <fitness folder>`, with a 5-minute timeout); only if they say they no longer want Telegram, note it in `learned.md` and stop offering.
   If `bot.sh start` prints anything but `running`, follow step 4 of `<this skill's base directory>/../connect/telegram.md`.
   To stop or pause the bot, run `sh <this skill's base directory>/../../scripts/bot.sh stop`.
+- **WhatsApp:** its session and owner live in `~/.claude/channels/whatsapp/`, not in the fitness folder.
+  In a terminal session without `Server:`, if `sh <this skill's base directory>/../../scripts/wa.sh status` prints anything but `running`, offer once per session to start it again (`wa.sh start <fitness folder>`, with a 5-minute timeout); only if they say they no longer want WhatsApp, note it in `learned.md` and stop offering.
+  If it prints anything but `running`, follow `<this skill's base directory>/../connect/whatsapp.md`.
+  To stop or pause the bot, run `sh <this skill's base directory>/../../scripts/wa.sh stop`.
 - **Screenshots:** when the user sends one from a watch or health app, read the same numbers for the date shown, log them the same way, and say they came from the screenshot.
 
 ## Weekly review
