@@ -92,8 +92,9 @@ case $1 in
   --bg) [ -f "$FAKE/refuse" ] && { cat "$FAKE/refuse"; exit 1; }
     sh "$FAKE/server.ts" >/dev/null 2>&1 & echo $! > "$CLAUDE_CONFIG_DIR/channels/telegram/bot.pid"; touch "$FAKE/session"
     echo "backgrounded · 0123abcd · fitness-telegram" ;;
-  agents) [ -f "$FAKE/session" ] && printf '[{"id":"0123abcd","kind":"background","name":"fitness-telegram","state":"%s"%s}]\n' \
-    "$(cat "$FAKE/state")" "$(cat "$FAKE/waiting")" || echo '[]' ;;
+  agents) dead=; case "$*" in *--all*) [ -f "$FAKE/noall" ] && { echo "error: unknown option '--all'" >&2; exit 1; }; [ -f "$FAKE/dead" ] && dead='{"id":"deadbeef","kind":"background","name":"fitness-telegram","state":"stopped"}' ;; esac
+    [ -f "$FAKE/session" ] && printf '[{"id":"0123abcd","kind":"background","name":"fitness-telegram","state":"%s"%s}%s]\n' \
+      "$(cat "$FAKE/state")" "$(cat "$FAKE/waiting")" "${dead:+,$dead}" || echo "[$dead]" ;;
   logs) printf '%b\n' "$(cat "$FAKE/screen")" ;;
   rm) rm -f "$FAKE/session"; kill "$(cat "$CLAUDE_CONFIG_DIR/channels/telegram/bot.pid")" 2>/dev/null ;;
 esac
@@ -140,8 +141,11 @@ if command -v bun >/dev/null || [ -x "$HOME/.bun/bin/bun" ]; then
   rm "$fake/refuse"
   session working '' 'Bot\033[1Cstarted'
   echo '{"plugin:telegram:telegram":{"timestamp":1,"id":"x"},"other":{"timestamp":1,"id":"y"}}' > "$tmp/cfg/mcp-needs-auth-cache.json"
+  mkdir -p "$tmp/cfg/jobs" && echo '["feedbeef"]' > "$tmp/cfg/jobs/pins.json"
   check "bot start: running when the session works" "[ \"\$(bot start '$tmp/folder')\" = running ]"
   check "bot start: forgets a cached plugin failure, and only that" "! grep -q telegram '$tmp/cfg/mcp-needs-auth-cache.json' && grep -q other '$tmp/cfg/mcp-needs-auth-cache.json'"
+  pins() { node -e 'console.log(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).join(" "))' "$tmp/cfg/jobs/pins.json"; }
+  check "bot start: pins the session, so an idle bot is never stopped, keeping other pins" "[ \"\$(pins)\" = 'feedbeef 0123abcd' ]"
   check "bot status: running" "[ \"\$(bot status)\" = running ]"
   unread 2 0
   check "bot status: a message being fetched is not deaf" "[ \"\$(bot status)\" = running ]"
@@ -154,6 +158,17 @@ if command -v bun >/dev/null || [ -x "$HOME/.bun/bin/bun" ]; then
   check "bot status: stuck when the session can't answer" "[ \"\$(bot status)\" = 'stuck: not logged in' ]"
   bot stop >/dev/null
   check "bot stop: removes the session and its process" "[ ! -f '$fake/session' ] && grep -qx rm '$fake/calls' && [ \"\$(bot status)\" = stopped ]"
+  check "bot stop: unpins it, keeping other pins" "[ \"\$(pins)\" = feedbeef ]"
+  # A bot that ended on its own (Claude Code stopped it, or the computer ran out of memory) leaves its pin behind.
+  touch "$fake/dead"; echo '["feedbeef","deadbeef"]' > "$tmp/cfg/jobs/pins.json"
+  bot stop >/dev/null
+  check "bot stop: also unpins and removes a bot that ended on its own" "[ \"\$(pins)\" = feedbeef ]"
+  rm "$fake/dead"
+  session working '' 'Bot\033[1Cstarted'
+  bot start "$tmp/folder" >/dev/null; touch "$fake/noall"
+  bot stop >/dev/null
+  check "bot stop: still stops the bot on a Claude Code without --all" "[ ! -f '$fake/session' ] && [ \"\$(pins)\" = feedbeef ]"
+  rm "$fake/noall"
   session blocked '' 'Not\033[1Clogged\033[1Cin · Please run /login'
   out=$(bot start "$tmp/folder")
   check "bot start: a login still stuck after a restart of the service says so" "[ \"\$out\" = \"background sessions not logged in: run 'claude auth login' in a terminal\" ]"
