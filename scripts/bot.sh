@@ -1,6 +1,6 @@
 #!/bin/sh
 # The Telegram bot: a background Claude Code session in the fitness folder, running the official Telegram plugin.
-#   bot.sh start <fitness folder>   stop any running bot, start a new one and wait until it answers; prints running or why not
+#   bot.sh start <fitness folder>   stop any running bot, start a new one, pin it and wait until it answers; prints running or why not
 #   bot.sh stop                     stop and remove every bot session
 #   bot.sh status                   print running, stopped, stuck: <why>, deaf (messages wait unread) or outdated (the plugin updated since)
 #   bot.sh ready                    print yes, no or offline: whether Claude Code's own login works (a background session needs it)
@@ -70,9 +70,9 @@ deaf() {
   done
 }
 
-# The bot's sessions, one "id state waiting" line each (waiting: it asks for a permission).
+# The bot's sessions, one "id state waiting" line each (waiting: it asks for a permission); with all, also those that ended.
 sessions() {
-  claude agents --json 2>/dev/null |
+  claude agents --json ${1:+--all} 2>/dev/null |
     "$BUN" -e 'for (const s of JSON.parse(await Bun.stdin.text())) if (s.kind === "background" && s.name === "'$NAME'") console.log(s.id, s.state ?? "", s.waitingFor ? "waiting" : "")' 2>/dev/null
 }
 
@@ -115,13 +115,33 @@ forget_failure() {
     if (j["plugin:telegram:telegram"]) { delete j["plugin:telegram:telegram"]; await Bun.write(process.env.F, JSON.stringify(j)) }' 2>/dev/null
 }
 
-# claude stop takes session ids, not names; claude rm drops stopped sessions from `claude agents`.
-# The plugin's poller can outlive its session; it is killed too, so a new bot never shares the token with it.
+# Claude Code stops a background session after an hour without messages, unless it is pinned (Ctrl+T in `claude agents`).
+# pin add|remove ID...: edits Claude Code's list of pinned sessions, keeping the others; written whole, then renamed into place.
+pin() {
+  OP=$1 && shift
+  OP=$OP IDS="$*" PINS="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/jobs/pins.json" "$BUN" -e '
+    const { mkdirSync, renameSync, writeFileSync } = require("fs"), f = process.env.PINS, ids = process.env.IDS.split(" ").filter(Boolean)
+    let old = []
+    try { old = JSON.parse(await Bun.file(f).text()) } catch {}
+    if (!Array.isArray(old)) old = []
+    const pins = process.env.OP === "add" ? [...new Set([...old, ...ids])] : old.filter((id) => !ids.includes(id))
+    if (pins.length === old.length && pins.every((id, i) => id === old[i])) process.exit(0)
+    mkdirSync(require("path").dirname(f), { recursive: true })
+    writeFileSync(`${f}.${process.pid}`, JSON.stringify(pins, null, 2))
+    renameSync(`${f}.${process.pid}`, f)' 2>/dev/null
+}
+
+# claude stop takes session ids, not names; claude rm drops stopped sessions from `claude agents`, and their pins go too,
+# also for a bot that ended on its own (a Claude Code without --all lists only the live ones). The plugin's poller can
+# outlive its session; it is killed too, so a new bot never shares the token with it.
 stop() {
-  for id in $(sessions | cut -d' ' -f1); do
+  ids=$(sessions all | cut -d' ' -f1)
+  [ -n "$ids" ] || ids=$(sessions | cut -d' ' -f1)
+  for id in $ids; do
     claude stop "$id" >/dev/null 2>&1
     claude rm "$id" >/dev/null 2>&1
   done
+  [ -z "$ids" ] || pin remove $ids
   i=0
   while running && [ $i -lt 10 ]; do sleep 1; i=$((i + 1)); done
   running && kill "$(cat "$TG_DIR/bot.pid")" 2>/dev/null
@@ -188,6 +208,7 @@ case $1 in
     fi
     [ "$out" = running ] || { stop; echo "$out"; exit 1; }
     trap - INT TERM
+    pin add "$(sessions | head -1 | cut -d' ' -f1)"
     # What status compares, and the mode later starts keep.
     echo "$ROOT" > "$TG_DIR/bot.root"
     [ -z "$MFC_PERMISSION_MODE" ] || echo "$MODE" > "$TG_DIR/permission-mode"
