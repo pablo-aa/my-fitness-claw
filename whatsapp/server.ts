@@ -8,6 +8,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js'
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js'
 import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
 import { join } from 'node:path'
 import { type WaClient, type WaIncomingMessageEvent } from 'zapo-js'
 import { z } from 'zod'
@@ -285,8 +286,12 @@ export async function startChannel({ client, dir, transport, log }: ChannelOptio
     // The client never reconnects by itself: wait 2s, then up to 30s, and stop for good when only a new pairing helps.
     let delay = 2_000
     let timer: ReturnType<typeof setTimeout> | undefined
+    // Once only the owner can fix it, the state stays and nothing reconnects (our own disconnect emits a close too).
+    let fatal: string | undefined
     const setState = (s: string) => { state = s; writeState(dir, s) }
+    const giveUp = (why: string) => { fatal = why; clearTimeout(timer); setState(why) }
     client.on('connection', (e) => {
+        if (fatal) return
         if (e.status === 'open') {
             delay = 2_000
             setState('open')
@@ -295,9 +300,9 @@ export async function startChannel({ client, dir, transport, log }: ChannelOptio
             return
         }
         if (stopping) return
-        const fatal = FATAL[e.reason] ?? (e.isLogout ? 'logged out' : undefined)
-        log('disconnected', e.reason, e.code ?? '', fatal ?? `retrying in ${delay / 1000}s`)
-        if (fatal) return setState(fatal)
+        const why = FATAL[e.reason] ?? (e.isLogout ? 'logged out' : undefined)
+        log('disconnected', e.reason, e.code ?? '', why ?? `retrying in ${delay / 1000}s`)
+        if (why) return giveUp(why)
         setState('connecting')
         clearTimeout(timer)
         timer = setTimeout(() => void connect(), delay)
@@ -307,11 +312,11 @@ export async function startChannel({ client, dir, transport, log }: ChannelOptio
         try {
             await client.connect()
             if (!client.auth.getCurrentCredentials()?.meJid) {
-                setState('not paired')
+                giveUp('not paired')
                 await client.disconnect().catch(() => undefined)
             }
         } catch (e) {
-            if (stopping) return
+            if (stopping || fatal) return
             log('connect failed', e, `retrying in ${delay / 1000}s`)
             clearTimeout(timer)
             timer = setTimeout(() => void connect(), delay)
@@ -347,13 +352,14 @@ export async function startChannel({ client, dir, transport, log }: ChannelOptio
     }
 }
 
-// One server per WhatsApp session: two would kick each other off. A holder whose process is gone doesn't count.
+// One server per WhatsApp session: two would kick each other off. A holder counts only while it is a channel server:
+// after a crash or a reboot its pid may belong to anything else.
 function lock(dir: string, log: (...a: unknown[]) => void): boolean {
     const path = join(dir, 'server.lock')
     for (let i = 0; i < 20; i++) {
         const pid = Number(existsSync(path) ? readFileSync(path, 'utf8') : 0)
-        let alive = false
-        if (pid && pid !== process.pid) try { process.kill(pid, 0); alive = true } catch {}
+        const alive = !!pid && pid !== process.pid &&
+            spawnSync('ps', ['-p', String(pid), '-o', 'args='], { encoding: 'utf8' }).stdout.includes('server.ts')
         if (!alive) {
             writeFileSync(`${path}.${process.pid}`, String(process.pid))
             renameSync(`${path}.${process.pid}`, path)
@@ -370,14 +376,17 @@ if (import.meta.main) {
     mkdirSync(dir, { recursive: true, mode: 0o700 })
     const logger = fileLogger(join(dir, 'server.log'))
     const log = (...a: unknown[]) => logger.line(a)
+    // The state file belongs to the server that holds the session: one that lost the lock leaves it alone.
     if (!lock(dir, log)) {
         log('another WhatsApp server is still running: exiting')
-        writeState(dir, 'stuck: another WhatsApp server is running')
         process.exit(1)
     }
     const channel = await startChannel({ client: createClient(dir, logger), dir, transport: new StdioServerTransport(), log })
     const bye = async () => {
+        // Never linger with the session linked: a stuck disconnect still ends the process.
+        setTimeout(() => process.exit(0), 5_000).unref()
         await channel.stop()
+        writeState(dir, 'stopped')
         try { if (readFileSync(join(dir, 'server.lock'), 'utf8') === String(process.pid)) rmSync(join(dir, 'server.lock')) } catch {}
         process.exit(0)
     }

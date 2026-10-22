@@ -17,6 +17,9 @@ warning() {
   read x
 }
 case $FAKE_SCREEN in
+  server) warning; printf '\\r\\n▎Channels (experimental) messages from plugin:%s inject directly in this session\\r\\n' "$WA_PLUGIN"
+    echo 'sleep 600' > "$FAKE_DIR/server.ts"; sh "$FAKE_DIR/server.ts" & echo $! > "$WHATSAPP_STATE_DIR/server.lock"; echo open > "$WHATSAPP_STATE_DIR/wa.state"
+    wait; sleep 600 ;;
   ok) warning; printf '\\r\\n▎Channels (experimental) messages from plugin:%s inject directly in this session\\r\\n' "$WA_PLUGIN"; sleep 600 ;;
   trust) printf 'Accessing workspace:\\r\\n/home/sam/my-fitness\\r\\n❯ 1. Yes, I trust this folder\\r\\nEnter to confirm · Esc to cancel\\r\\n'; read x; sleep 600 ;;
   other) warning whatsapp@someone-else; sleep 600 ;;
@@ -95,6 +98,15 @@ describe('launch', () => {
         launcher!.kill('SIGTERM')
         expect(await t.until((s) => s === 'stopped', 5_000)).toBe('stopped')
     }, 30_000)
+
+    test('a channel server that dies brings a new session', async () => {
+        const t = setup('server')
+        await t.until((s) => s === 'running')
+        await Bun.sleep(6_000)
+        expect(t.state()).toBe('running')
+        process.kill(Number(readFileSync(join(t.dir, 'server.lock'), 'utf8')))
+        expect(await t.until((s) => s.startsWith('restarting'), 15_000)).toBe('restarting in 10s: the WhatsApp channel stopped')
+    }, 40_000)
 
     test('a stop ends the session and the launcher', async () => {
         const t = setup('ok')

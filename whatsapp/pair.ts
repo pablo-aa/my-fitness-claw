@@ -4,7 +4,7 @@
 //   bun pair.ts whoami           prints `paired <number>` or `not paired`, without connecting
 //   bun pair.ts unpair           unlinks the device from the phone and forgets the session; prints `unpaired`
 // Only one connection per session at a time: the bot must be stopped first (wa.sh does it).
-import { spawn } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { digits, stateDir, user, variants } from './lib'
@@ -29,9 +29,23 @@ async function poll(done: (s: string) => boolean, ms: number) {
     return read()
 }
 
-if (cmd === 'start') {
+// The background pairing, if one still runs: a new one replaces it, so two never share the session.
+function stopRun() {
+    const pid = existsSync(join(dir, 'pair.pid')) ? readFileSync(join(dir, 'pair.pid'), 'utf8').trim() : ''
+    if (pid && spawnSync('ps', ['-p', pid, '-o', 'args='], { encoding: 'utf8' }).stdout.includes('pair.ts')) {
+        try { process.kill(Number(pid), 'SIGTERM') } catch {}
+        Bun.sleepSync(1_000)
+    }
+    rmSync(join(dir, 'pair.pid'), { force: true })
+}
+
+if (cmd === 'stop') {
+    stopRun()
+    process.exit(0)
+} else if (cmd === 'start') {
     const number = digits(arg ?? '')
     if (number.length < 10) { console.log('usage: pair.ts start <number with country code>'); process.exit(1) }
+    stopRun()
     say('starting')
     // Detached, so it keeps waiting for the code after this command (and the tool that ran it) is gone.
     const child = spawn(process.execPath, [import.meta.path, 'run', number], {
@@ -60,6 +74,9 @@ if (cmd === 'start') {
     process.exit(0)
 } else if (cmd === 'run') {
     const number = digits(arg ?? '')
+    writeFileSync(join(dir, 'pair.pid'), String(process.pid))
+    process.on('exit', () => { try { if (readFileSync(join(dir, 'pair.pid'), 'utf8') === String(process.pid)) rmSync(join(dir, 'pair.pid')) } catch {} })
+    process.on('SIGTERM', () => process.exit(1))
     const client = createClient(dir, logger)
     const fail = async (why: string) => {
         say(`failed: ${why}`)

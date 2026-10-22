@@ -1,5 +1,8 @@
 import { describe, expect, test } from 'bun:test'
 import { createHash } from 'node:crypto'
+import { mkdtempSync, symlinkSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import {
     admitted, chunks, classify, inboxName, learnedLid, meta, outbound, parseOwner, PREFIX, Recent, sendable, stale, stateDir,
     variants, voted
@@ -129,6 +132,13 @@ describe('sending', () => {
         expect(sendable(`${dir}/inbox/../wa.sqlite`, dir)).toContain('refusing')
         expect(sendable(`${dir}/inbox/1-a.jpg`, dir)).toBeNull()
         expect(sendable('plan.pdf', dir)).toContain('absolute')
+    })
+    test('a symlink to the session file is still the session file', () => {
+        const dir = mkdtempSync(join(tmpdir(), 'wa-link-'))
+        writeFileSync(join(dir, 'wa.sqlite'), 'x')
+        const link = join(mkdtempSync(join(tmpdir(), 'wa-out-')), 'plan.pdf')
+        symlinkSync(join(dir, 'wa.sqlite'), link)
+        expect(sendable(link, dir)).toContain('refusing')
     })
     test('inbox names never come from the sender', () => {
         expect(inboxName('../../etc/passwd', '.ogg')).toMatch(/^\d+-etcpasswd\.ogg$/)

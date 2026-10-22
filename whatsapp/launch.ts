@@ -55,6 +55,16 @@ const mode = () => {
 }
 
 type End = { why: string; again: boolean }
+let loginChecked = 0
+const loggedIn = async () => {
+    const r = Bun.spawn(['sh', join(ROOT, 'scripts', 'bot.sh'), 'ready'], { stdout: 'pipe', stderr: 'ignore' })
+    return (await new Response(r.stdout).text()).trim() !== 'no'
+}
+// The channel server holding the WhatsApp session, as its lock file names it.
+const serverAlive = () => {
+    const pid = read('server.lock')
+    return !!pid && spawnSync('ps', ['-p', pid, '-o', 'args='], { encoding: 'utf8' }).stdout.includes('server.ts')
+}
 let stopSession: (() => void) | undefined
 let stopping = false
 
@@ -95,8 +105,12 @@ async function session(): Promise<End> {
                 screen = (screen + text).slice(-20_000)
                 const flat = squash(screen)
                 if (up) {
-                    // A login that expires mid-run leaves a session that can't answer.
-                    if (flat.slice(-3000).includes('pleaserun/login')) finish('not logged in', false)
+                    // A login that expires mid-run leaves a session that can't answer; the words alone may just be
+                    // in a conversation, so Claude Code's own login is checked before stopping (at most every 10 minutes).
+                    if (flat.slice(-3000).includes('pleaserun/login') && Date.now() - loginChecked > 600_000) {
+                        loginChecked = Date.now()
+                        void loggedIn().then((ok) => { if (!ok) finish('not logged in', false) })
+                    }
                     return
                 }
                 if (ready(PLUGIN, flat)) {
@@ -120,9 +134,13 @@ async function session(): Promise<End> {
     })
     const upTimer = setTimeout(() => up || finish(`stuck: the WhatsApp channel did not come up (${dialog(screen)})`, true), UP_TIMEOUT)
     // The channel server writes how WhatsApp is doing; a link only a new pairing fixes stops the bot.
+    // A channel server that died leaves Claude Code running deaf: a new session brings it back.
+    let opened = false
     const watch = setInterval(() => {
         const wa = read('wa.state')
-        if (FATAL_WA.test(wa)) finish(wa, false)
+        if (FATAL_WA.test(wa)) return finish(wa, false)
+        if (wa === 'open') opened = true
+        if (opened && !serverAlive()) finish('the WhatsApp channel stopped', true)
     }, 5_000)
     const code = await proc.exited
     clearTimeout(upTimer)

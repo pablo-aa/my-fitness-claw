@@ -5,8 +5,8 @@ import { createNoopLogger, createStore, type WaClient, WaClient as Client } from
 
 // Under Bun, ws hands the fake server a close reason that is already a string, which it then decodes again.
 const decode = TextDecoder.prototype.decode
-TextDecoder.prototype.decode = function (input?: unknown, options?: TextDecodeOptions) {
-    return typeof input === 'string' ? input : decode.call(this, input as AllowSharedBufferSource, options)
+TextDecoder.prototype.decode = function (input?: unknown, options?: Parameters<typeof decode>[1]) {
+    return typeof input === 'string' ? input : decode.call(this, input as Parameters<typeof decode>[0], options)
 }
 
 export const BOT = '5511900000000'

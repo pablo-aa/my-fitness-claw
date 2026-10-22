@@ -34,7 +34,7 @@ settings() {
   "env": { "PATH": "$HOME/.bun/bin:$HOME/.local/bin:$PATH", "MFC_CHANNEL": "whatsapp"$tz },
   "permissions": {
     "allow": ["mcp__plugin_whatsapp_whatsapp__*", "Bash(sh $ROOT/hooks/voice.sh:*)", "Bash(date:*)"],
-    "deny": ["Edit(CLAUDE.md)", "Edit(.claude/**)", "Edit(~/.claude/**)", "Read(/$WA_DIR/wa.sqlite*)",
+    "deny": ["Edit(CLAUDE.md)", "Edit(.claude/**)", "Edit(~/.claude/**)", "Edit(/$WA_DIR/**)", "Read(/$WA_DIR/wa.sqlite*)",
              "Bash(claude mcp:*)", "Bash(claude plugin:*)"]
   }
 }
@@ -50,6 +50,11 @@ running() { p=$(pid); [ -n "$p" ] && kill -0 "$p" 2>/dev/null && ps -p "$p" -o a
 state() { sed -n 1p "$WA_DIR/$1" 2>/dev/null; }
 
 stop() {
+  # A boot that is still retrying would start it again a minute later (not when that boot is the caller).
+  b=$(cat "$WA_DIR/boot.pid" 2>/dev/null)
+  [ -z "$MFC_BOOT" ] && [ -n "$b" ] && ps -p "$b" -o args= 2>/dev/null | grep -q 'wa.sh boot' && kill "$b" 2>/dev/null
+  # A pairing left waiting for its code holds the same WhatsApp session.
+  [ -f "$WA_DIR/pair.pid" ] && pair_ts stop
   if [ "$(uname -s)" = Darwin ] && [ -f "$AGENT" ]; then
     launchctl bootout "gui/$(id -u)/$LABEL" >/dev/null 2>&1
     rm -f "$AGENT"
@@ -193,8 +198,10 @@ EOF
   noautostart) { crontab -l 2>/dev/null | grep -vF "$TAG"; } | crontab - && rm -f "$WA_DIR/autostart.sh" && echo off ;;
   # After a reboot the network can come up late: try for about 10 minutes.
   boot)
+    echo $$ > "$WA_DIR/boot.pid"
     for i in 1 2 3 4 5 6 7 8 9 10; do
-      out=$(sh "$0" start "$2")
+      running && exit 0
+      out=$(MFC_BOOT=1 sh "$0" start "$2")
       echo "$(date '+%F %T') $out"
       [ "$out" = running ] && exit 0
       sleep 60

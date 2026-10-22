@@ -1,5 +1,6 @@
 // Pure helpers shared by the channel server, the pairing command and the tests: no network, no WhatsApp client.
 import { createHash } from 'node:crypto'
+import { realpathSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { basename, extname, join, resolve, sep } from 'node:path'
 
@@ -170,9 +171,11 @@ export function outbound(path: string): { type: 'image' | 'document'; mimetype: 
 
 // The bot's own folder never leaves the computer (it holds the WhatsApp session), except what the owner sent in.
 export function sendable(path: string, dir: string): string | null {
-    const p = resolve(path)
     if (!path.startsWith('/')) return 'files need absolute paths'
-    const d = resolve(dir)
+    // Through any symlink: a link elsewhere to the session file is still the session file.
+    const real = (f: string) => { try { return realpathSync(f) } catch { return resolve(f) } }
+    const p = real(path)
+    const d = real(dir)
     if ((p === d || p.startsWith(d + sep)) && !p.startsWith(join(d, 'inbox') + sep)) return `refusing to send a file from ${d}`
     return null
 }
