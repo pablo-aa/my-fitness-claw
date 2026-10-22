@@ -1,0 +1,20 @@
+{
+  "name": "my-fitness-claw-whatsapp",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "start": "bun install --production --frozen-lockfile --no-summary 1>&2 && bun server.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.27.1",
+    "@zapo-js/store-sqlite": "1.3.0",
+    "zapo-js": "1.10.0",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.2",
+    "@zapo-js/fake-server": "1.3.0"
+  }
+}
