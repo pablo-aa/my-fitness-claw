@@ -105,7 +105,8 @@ launch() {
 EOF
     launchctl bootstrap "gui/$(id -u)" "$AGENT" 2>&1 || return 1
   else
-    "$BUN" "$ROOT/whatsapp/launch.ts" start "$1" || return 1
+    # Its own lines go to launch.log: this function's output is only the outcome.
+    "$BUN" "$ROOT/whatsapp/launch.ts" start "$1" >/dev/null || return 1
   fi
   # The first start installs the channel's packages: up to a few minutes.
   end=$(($(date +%s) + 240))

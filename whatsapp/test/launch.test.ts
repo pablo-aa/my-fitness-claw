@@ -124,6 +124,17 @@ describe('launch', () => {
         expect(t.state()).toBe('starting')
     }, 30_000)
 
+    test('start leaves the session running in the background and prints nothing', async () => {
+        const t = setup('crash')
+        launcher!.kill('SIGKILL')
+        const env = { ...process.env, PATH: `${join(t.tmp, 'bin')}:${process.env.PATH}`, WHATSAPP_STATE_DIR: t.dir, WA_PLUGIN: PLUGIN, FAKE_SCREEN: 'ok', FAKE_DIR: t.tmp }
+        const start = Bun.spawn(['bun', join(ROOT, 'whatsapp', 'launch.ts'), 'start', t.folder], { env, stdout: 'pipe', stderr: 'ignore' })
+        expect(await new Response(start.stdout).text()).toBe('')
+        expect(await t.until((s) => s === 'running')).toBe('running')
+        process.kill(Number(readFileSync(join(t.dir, 'bot.pid'), 'utf8')), 'SIGTERM')
+        expect(await t.until((s) => s === 'stopped', 5_000)).toBe('stopped')
+    }, 30_000)
+
     test('a stop ends the session and the launcher', async () => {
         const t = setup('ok')
         await t.until((s) => s === 'running')

@@ -30,7 +30,8 @@ if (!['run', 'start'].includes(cmd) || !existsSync(join(folder, 'profile.md'))) 
 const state = (s: string) => { writeFileSync(STATE, `${s}\n`); console.log(new Date().toISOString(), s) }
 
 if (cmd === 'start') {
-    state('starting')
+    // Silent: wa.sh reads this command's output as the outcome.
+    writeFileSync(STATE, 'starting\n')
     const out = openSync(join(DIR, 'launch.log'), 'a')
     spawn(process.execPath, [import.meta.path, 'run', folder], { detached: true, stdio: ['ignore', out, out] }).unref()
     process.exit(0)
