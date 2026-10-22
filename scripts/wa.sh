@@ -25,6 +25,7 @@ mkdir -p "$WA_DIR" && chmod 700 "$WA_DIR"
 
 # Like the Telegram bot's: the plugin stays disabled everywhere else, or every new session would link to WhatsApp too.
 # The bot's edit tools stay off its rules, the plugin, Claude Code's settings and the WhatsApp session.
+# The plugin is a working directory, so reading its skills and evidence never stops the session with a question.
 settings() {
   tz=$(timezone "${1:-.}")
   tz=${tz:+", \"TZ\": \"$tz\""}
@@ -33,6 +34,7 @@ settings() {
   "enabledPlugins": { "$PLUGIN": true },
   "env": { "PATH": "$HOME/.bun/bin:$HOME/.local/bin:$PATH", "MFC_CHANNEL": "whatsapp"$tz },
   "permissions": {
+    "additionalDirectories": ["$ROOT"],
     "allow": ["mcp__plugin_whatsapp_whatsapp__*", "Bash(sh $ROOT/hooks/voice.sh:*)", "Bash(date:*)"],
     "deny": ["Edit(CLAUDE.md)", "Edit(.claude/**)", "Edit(~/.claude/**)", "Edit(/$WA_DIR/**)", "Read(/$WA_DIR/wa.sqlite*)",
              "Bash(claude mcp:*)", "Bash(claude plugin:*)"]
