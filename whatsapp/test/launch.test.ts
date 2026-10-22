@@ -20,6 +20,11 @@ case $FAKE_SCREEN in
   server) warning; printf '\\r\\n▎Channels (experimental) messages from plugin:%s inject directly in this session\\r\\n' "$WA_PLUGIN"
     echo 'sleep 600' > "$FAKE_DIR/server.ts"; sh "$FAKE_DIR/server.ts" & echo $! > "$WHATSAPP_STATE_DIR/server.lock"; echo open > "$WHATSAPP_STATE_DIR/wa.state"
     wait; sleep 600 ;;
+  quiet) warning
+    echo 'sleep 600' > "$FAKE_DIR/server.ts"; sh "$FAKE_DIR/server.ts" & echo $! > "$WHATSAPP_STATE_DIR/server.lock"; echo open > "$WHATSAPP_STATE_DIR/wa.state"
+    wait; sleep 600 ;;
+  unasked) echo 'sleep 600' > "$FAKE_DIR/server.ts"; sh "$FAKE_DIR/server.ts" & echo $! > "$WHATSAPP_STATE_DIR/server.lock"; echo open > "$WHATSAPP_STATE_DIR/wa.state"
+    wait; sleep 600 ;;
   ok) warning; printf '\\r\\n▎Channels (experimental) messages from plugin:%s inject directly in this session\\r\\n' "$WA_PLUGIN"; sleep 600 ;;
   trust) printf 'Accessing workspace:\\r\\n/home/sam/my-fitness\\r\\n❯ 1. Yes, I trust this folder\\r\\nEnter to confirm · Esc to cancel\\r\\n'; read x; sleep 600 ;;
   other) warning whatsapp@someone-else; sleep 600 ;;
@@ -107,6 +112,17 @@ describe('launch', () => {
         process.kill(Number(readFileSync(join(t.dir, 'server.lock'), 'utf8')))
         expect(await t.until((s) => s.startsWith('restarting'), 15_000)).toBe('restarting in 10s: the WhatsApp channel stopped')
     }, 40_000)
+
+    test('with no banner, a channel server that reached WhatsApp after the warning means it runs', async () => {
+        const t = setup('quiet')
+        expect(await t.until((s) => s === 'running')).toBe('running')
+    }, 30_000)
+
+    test('a channel server alone, with no warning accepted, is not enough', async () => {
+        const t = setup('unasked')
+        await Bun.sleep(7_000)
+        expect(t.state()).toBe('starting')
+    }, 30_000)
 
     test('a stop ends the session and the launcher', async () => {
         const t = setup('ok')

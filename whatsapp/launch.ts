@@ -140,6 +140,12 @@ async function session(): Promise<End> {
         const wa = read('wa.state')
         if (FATAL_WA.test(wa)) return finish(wa, false)
         if (wa === 'open') opened = true
+        // Some Claude Code versions show no banner: a channel server that Claude Code started and that reached
+        // WhatsApp, after the warning was accepted, is a channel that is listening.
+        if (opened && accepted && !up) {
+            up = true
+            state('running')
+        }
         if (opened && !serverAlive()) finish('the WhatsApp channel stopped', true)
     }, 5_000)
     const code = await proc.exited
