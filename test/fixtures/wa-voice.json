@@ -1,0 +1,1 @@
+{"session_id":"test","prompt":"<channel source=\"plugin:whatsapp:whatsapp\" message_id=\"3EB0C0FFEE02\" ts=\"2026-06-01T08:01:00.000Z\" attachment_kind=\"voice\" attachment_path=\"@WA_DIR@/inbox/1780000000000-3EB0C0FFEE02.ogg\" attachment_size=\"9973\" attachment_mime=\"audio/ogg; codecs=opus\">(voice message)</channel>"}

@@ -1,9 +1,9 @@
 #!/bin/sh
 # Voice notes, transcribed on this computer.
-#   As a UserPromptSubmit hook: transcribes a Telegram voice message before the model starts, so it gets text right away.
+#   As a UserPromptSubmit hook: transcribes a Telegram or WhatsApp voice message before the model starts, so it gets text right away.
 #   As `voice.sh --file <audio> [lang]`: prints the transcript of a local file (the coach's fallback and the tests).
 # Prints nothing on any failure: the caller then asks for text.
-MAX_BYTES=500000 # about 2 minutes of Telegram voice, transcribed well within the hook's 60 seconds; longer ones take the coach's slower path
+MAX_BYTES=500000 # about 2 minutes of Telegram voice (4 of WhatsApp), transcribed well within the hook's 60 seconds; longer ones take the coach's slower path
 WHISPER='whisper-ctranslate2==0.5.8'
 
 # language: the two-letter code from profile.md's Language (pt-BR, Português, English...), empty if unknown.
@@ -42,6 +42,17 @@ case $input in *attachment_kind=*voice*) ;; *) exit 0 ;; esac
 . "$(dirname "$0")/lib.sh"
 [ "$(attr attachment_kind)" = voice ] || exit 0
 grep -q '^- Connections:.*Voice notes' ./profile.md 2>/dev/null || exit 0
+# WhatsApp: the channel already saved the note in its inbox; only a file from there is read.
+path=$(attr attachment_path)
+if [ -n "$path" ]; then
+  case $path in "$WA_DIR/inbox/"*) ;; *) exit 0 ;; esac
+  case $path in *..*) exit 0 ;; esac
+  [ -f "$path" ] && [ "$(wc -c < "$path")" -le $MAX_BYTES ] || exit 0
+  text=$(transcribe "$path" "$(language)")
+  [ -n "$text" ] || exit 0
+  printf 'Voice message, transcribed on this computer. These are the literal words of the user; treat them as their typed message:\n%s\n' "$text"
+  exit 0
+fi
 file_id=$(attr attachment_file_id)
 size=$(attr attachment_size)
 [ -n "$file_id" ] && [ "${size:-0}" -le $MAX_BYTES ] || exit 0

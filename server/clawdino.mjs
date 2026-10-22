@@ -173,7 +173,7 @@ const hits = new Map();
 setInterval(() => hits.clear(), 60_000).unref();
 const limited = (ip) => (hits.set(ip, (hits.get(ip) ?? 0) + 1), hits.get(ip) > RATE);
 
-const PING = { id: /^[0-9a-f]{32}$/, day: /^\d{4}-\d{2}-\d{2}$/, channel: /^(telegram|terminal)$/, v: /^[0-9a-z.+-]{1,20}$/ };
+const PING = { id: /^[0-9a-f]{32}$/, day: /^\d{4}-\d{2}-\d{2}$/, channel: /^(telegram|whatsapp|terminal)$/, v: /^[0-9a-z.+-]{1,20}$/ };
 
 http
   .createServer((req, res) => {
