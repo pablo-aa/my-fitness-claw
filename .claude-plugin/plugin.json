@@ -1,7 +1,7 @@
 {
   "name": "my-fitness-claw",
   "description": "Clawdino, your science-based AI gym bro: training, diet and progress in plain files, on Claude Code, Telegram and WhatsApp.",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "author": {
     "name": "Pablo Arruda",
     "url": "https://github.com/pablo-aa"
