@@ -300,6 +300,43 @@ check "bot autostart: at boot, runs the installed version's bot" "[ \"\$(sh '$tm
 check "bot autostart: cron logs each boot" "grep -q '>> \"$tmp/cfg/channels/telegram/boot.log\" 2>&1 # my-fitness-claw bot\$' '$fake/crontab'"
 check "bot noautostart: removes only its line" "[ \"\$(bot noautostart)\" = off ] && ! grep -q 'my-fitness-claw' '$fake/crontab' && grep -qx '0 3 \* \* \* backup' '$fake/crontab' && [ ! -f '$tmp/cfg/channels/telegram/autostart.sh' ]"
 
+# The container's entrypoint against a fake claude, bun and sleep: the sleeps link WhatsApp, link it again once the
+# bot has stopped, and end the entrypoint after the second run.
+ct="$tmp/ct"
+mkdir -p "$ct/bin" "$ct/home"
+printf '#!/bin/sh\necho "$*" >> "$CT/claude"\n' > "$ct/bin/claude"
+cat > "$ct/bin/bun" <<'EOF'
+#!/bin/sh
+case "$*" in
+  *whoami*) [ -f "$CT/paired" ] && echo 'paired 5511900000000' || echo 'not paired' ;;
+  *launch.ts*) echo "bun $*"; echo run >> "$CT/runs"; echo 'stuck: replaced' > "$HOME/.claude/channels/whatsapp/bot.state" ;;
+esac
+EOF
+cat > "$ct/bin/sleep" <<'EOF'
+#!/bin/sh
+wa="$HOME/.claude/channels/whatsapp"
+runs=$(cat "$CT/runs" 2>/dev/null | wc -l | tr -d " ")
+echo x >> "$CT/sleeps$runs"
+case $runs in
+  0) touch "$CT/paired" && echo '{ "owner": "self" }' > "$wa/config.json" ;;
+  1) [ "$(wc -l < "$CT/sleeps1")" -ge 3 ] && touch -t 203001010000 "$wa/config.json" ;;
+  *) kill "$PPID" ;;
+esac
+exit 0
+EOF
+chmod +x "$ct/bin/claude" "$ct/bin/bun" "$ct/bin/sleep"
+container() { rm -f "$ct/runs" "$ct"/sleeps* "$ct/claude"; env HOME="$ct/home" CT="$ct" PATH="$ct/bin:$PATH" sh "$root/scripts/container.sh" 2>&1; }
+container > "$ct/out"
+check "container: answers Claude Code's first-run and trust screens for the folder" "node -e 'const c = JSON.parse(require(\"fs\").readFileSync(\"$ct/home/.claude.json\")); process.exit(c.hasCompletedOnboarding && c.projects[\"$ct/home/fitness\"].hasTrustDialogAccepted ? 0 : 1)'"
+check "container: installs the plugins again from the image" "grep -qx 'plugin marketplace add $root' '$ct/claude' && grep -qx 'plugin uninstall my-fitness-claw@my-fitness-claw' '$ct/claude' && grep -qx 'plugin uninstall whatsapp@my-fitness-claw' '$ct/claude' && grep -qx 'plugin install my-fitness-claw@my-fitness-claw' '$ct/claude' && grep -qx 'plugin install whatsapp@my-fitness-claw' '$ct/claude'"
+check "container: a new folder starts from the template" "cmp -s '$root/template/profile.md' '$ct/home/fitness/profile.md'"
+check "container: waits for WhatsApp, then runs the bot in the folder" "grep -q 'waiting for WhatsApp' '$ct/out' && grep -qx 'bun $root/whatsapp/launch.ts run $ct/home/fitness' '$ct/out'"
+check "container: a stuck bot waits for the link to change, then runs again" "[ \$(wc -l < '$ct/sleeps1') -ge 3 ] && [ \$(wc -l < '$ct/runs') -eq 2 ] && grep -q 'the bot stopped (stuck: replaced)' '$ct/out'"
+echo '- Name: Sam' >> "$ct/home/fitness/profile.md"
+container > "$ct/out"
+check "container: a restart keeps the folder and goes straight to the bot" "grep -q '^- Name: Sam' '$ct/home/fitness/profile.md' && ! grep -q waiting '$ct/out' && [ ! -f '$ct/sleeps0' ]"
+check "container: .env and local notes stay out of the image" "grep -qxF '**/.env' '$root/.dockerignore' && grep -qx CLAUDE.local.md '$root/.dockerignore'"
+
 # The server against an unreachable Telegram: HTTP endpoints only.
 port=18787
 code() { curl -s -o /dev/null -w '%{http_code}' "$@"; }

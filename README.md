@@ -5,7 +5,7 @@
 <h1 align="center">Clawdino</h1>
 
 <p align="center">
-  Your science-based AI gym bro, on Claude Code and Telegram.<br>
+  Your science-based AI gym bro, on Claude Code, Telegram and WhatsApp.<br>
   What works, as simple as possible, for you.
 </p>
 
@@ -13,6 +13,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-black" alt="MIT license"></a>
   <img src="https://img.shields.io/badge/Claude_Code-plugin-D97757" alt="Claude Code plugin">
   <img src="https://img.shields.io/badge/Telegram-bot-26A5E4" alt="Telegram bot">
+  <img src="https://img.shields.io/badge/WhatsApp-bot-25D366" alt="WhatsApp bot">
 </p>
 
 ## Start with one message
@@ -131,6 +132,16 @@ Text it or send a voice message; most replies come in seconds.
 - Prefer a bot no one else manages?
   Ask to "use BotFather" and create the bot yourself.
 
+## WhatsApp
+
+Prefer WhatsApp? Ask Clawdino to "connect WhatsApp".
+It links the coach to a WhatsApp account as one more device, as WhatsApp Web is, with a code you type on the phone.
+
+- A number just for the bot is best: the coach is a contact of its own, its messages notify you, and your own number stays out of it, since WhatsApp doesn't allow unofficial apps like this one and can ban a number that behaves like a bot.
+  With your own number you talk to it in the chat with yourself, but those replies arrive silently.
+- Text, voice messages, photos and polls in place of buttons; check-ins work the same as on Telegram.
+- Like the Telegram bot, it answers while your computer is on, or all the time [on your server](#on-all-the-time-on-your-server).
+
 ## On all the time, on your server
 
 Have a Linux server, like a small VPS you reach with `ssh` and a key, no password?
@@ -142,6 +153,7 @@ It checks the server, installs what it needs there, asks you to sign in to Claud
 - 1 GB of memory is enough (the bot uses about 600 MB); voice messages need about 2 GB.
 - Garmin doesn't move with it, so send screenshots instead; with no browser there, the plan comes as a page you print from the phone.
 - Claude Code on your computer then only checks on it: ask it to see how the bot is, update it, open a session there, or "bring my coach back".
+- Running Docker or Coolify there? The WhatsApp bot also comes as a container: see Container in [`skills/connect/server.md`](skills/connect/server.md).
 
 ## Connections
 
