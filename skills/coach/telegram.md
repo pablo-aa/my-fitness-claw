@@ -37,6 +37,7 @@ The question is plain text, never escaped; the tap comes back as their next mess
 - Send files with `reply` and `files`, using absolute paths.
   The plan PDF goes this way instead of being opened; without a browser, `plan.html` goes instead (Plan PDF in the coach skill).
 - A photo of a watch or health app is a screenshot (see Connections in the coach skill).
+- To keep a file they sent (a progress photo, a report), copy it with `sh <this skill's base directory>/../../scripts/keep.sh "<path>" <path in the folder>`: a plain `cp` out of the inbox is refused.
 - Voice messages usually arrive already transcribed in the context ("Voice message, transcribed..."): answer it as typed text.
   If the transcript is missing and `Voice notes` is in `Connections:`, fetch the file with `download_attachment` and run `sh <this skill's base directory>/../../hooks/voice.sh --file "<path>"`; if it prints nothing or nonsense, ask for text.
   Without `Voice notes`, ask for text and offer once to set it up in the terminal (a `(terminal)` reminder).

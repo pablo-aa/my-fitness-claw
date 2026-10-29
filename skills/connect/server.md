@@ -93,6 +93,22 @@ When the user asks here, a terminal session on this computer, run it on the serv
 - Sign in again, when the bot says it is not logged in: the same `ssh -t` command as in step 4.
 - Connect something (Hevy, voice notes) or talk to the coach in a terminal there: `ssh -t <server> 'cd ~/my-fitness && TZ=<zone> PATH="$HOME/.local/bin:$HOME/.bun/bin:$PATH" claude'`, with the zone from `Timezone:`, then ask that coach.
 
+## WhatsApp
+
+The WhatsApp bot moves the same way, alongside Move above, with these steps in place of the Telegram ones:
+
+- Step 3: also run `sh "$bot"` with `wa.sh install` in place of `bot.sh` there (`wa="$(dirname "$bot")/wa.sh"`), which must print `installed`.
+- Step 6: stop it here (`sh <plugin>/scripts/wa.sh stop`): one link must never run in two places, or WhatsApp keeps kicking one of them off (`replaced`).
+- Step 7: copy its link and owner instead of the Telegram files, keeping any the server already had:
+
+  ```sh
+  cd ~/.claude/channels/whatsapp && COPYFILE_DISABLE=1 tar -cf - wa.sqlite config.json $(ls permission-mode 2>/dev/null) | ssh <server> 'umask 077 && mkdir -p ~/.claude/channels/whatsapp && cd ~/.claude/channels/whatsapp && for f in wa.sqlite config.json; do [ ! -f $f ] || cp -p $f $f.bak; done && tar -xf -'
+  ```
+
+- Step 10: `sh "$wa" start ~/my-fitness`, with a 5-minute timeout, must print `running` (anything else, as in step 7 of `whatsapp.md`), then `sh "$wa" autostart ~/my-fitness` must print `on`.
+  With no bot here yet, link it there instead: steps 4 to 7 of `whatsapp.md`, running its commands there.
+- When it fails, Use and Bring it back work the same, with `wa.sh` in place of `bot.sh` and these files in place of the Telegram ones.
+
 ## Bring it back
 
 1. On the server: `sh "$bot" stop` and `sh "$bot" noautostart`; `sh "$bot" status` must print `stopped`.

@@ -10,6 +10,7 @@ Each connection has its own guide in this skill's base directory:
 | Connection | Guide | Brings |
 |---|---|---|
 | Telegram | `telegram.md` | The coach on the phone, voice notes included. |
+| WhatsApp | `whatsapp.md` | The coach on WhatsApp, voice notes included. |
 | Hevy | `hevy.md` | Workouts and routines. |
 | Garmin | `wearables.md` | Steps, sleep, resting heart rate, weight. |
 | Other watch | `wearables.md` | The same numbers, from a screenshot. |
@@ -32,7 +33,7 @@ Follow each guide step by step, in the user's language: one message per step tha
 - If the user asks for a source with no guide here, say in one line that it is not supported yet.
 - When a guide needs a tool installed, say what it is and why in one line, ask once, then run the install yourself; if they decline, skip that connection.
   Picking Telegram in the setup's choice screen already said yes to its installs.
-- Connect only in a terminal session; from Telegram, name the options in a few lines (see the coach skill).
+- Connect only in a terminal session; from Telegram or WhatsApp, name the options in a few lines (see the coach skill).
 - On Windows, the Telegram bot can only run on a Linux server: if they pick Telegram, say so in one line and offer Server instead, which creates the bot there.
 - Secrets go in the fitness folder's `.env`, one `KEY=value` per line, with `chmod 600 .env`.
 - Never print secrets, never put them in another file, never commit them.

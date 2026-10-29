@@ -2,6 +2,8 @@
 
 # Where the official Telegram plugin keeps its token, access list and pid (it follows the same variables).
 TG_DIR="${TELEGRAM_STATE_DIR:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}/channels/telegram}"
+# Where this repo's WhatsApp channel keeps its session, owner and the files the owner sent (whatsapp/lib.ts agrees).
+WA_DIR="${WHATSAPP_STATE_DIR:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}/channels/whatsapp}"
 
 # attr NAME: the value of the first NAME="..." in the channel tag of $input, never in the message text after the tag
 # (the hook payload is JSON, so quotes arrive escaped; the leading space keeps `id` from matching `file_id`).
