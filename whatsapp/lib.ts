@@ -1,4 +1,5 @@
 // Pure helpers shared by the channel server, the pairing command and the tests: no network, no WhatsApp client.
+import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { realpathSync } from 'node:fs'
 import { homedir } from 'node:os'
@@ -155,6 +156,25 @@ export function chunks(text: string, max = 4000): string[] {
     if (rest) out.push(rest)
     return out
 }
+
+// WhatsApp shows Markdown as typed: **bold** and # headings would arrive with their marks. Code blocks (cards) stay as they are.
+export function whatsappText(text: string): string {
+    // Code, inline code and links go out as they are: set aside here and put back at the end.
+    const kept: string[] = []
+    const keep = (s: string) => `\u0000${kept.push(s) - 1}\u0000`
+    return text
+        .replace(/```[\s\S]*?```|`[^`\n]*`/g, keep)
+        .replace(/\[([^\]\n]+)\]\((https?:\/\/[^)\s]+)\)/g, (_, label, url) => `${label} ${keep(url)}`)
+        .replace(/https?:\/\/[^\s\u0000]+/g, keep)
+        .replace(/\*\*(.+?)\*\*/g, '*$1*')
+        .replace(/(?<![\p{L}\d_])__(.+?)__(?![\p{L}\d_])/gu, '_$1_')
+        .replace(/^#{1,6}[ \t]+(.+)$/gm, (_, title) => `*${title.replace(/\*/g, '')}*`)
+        .replace(/\u0000(\d+)\u0000/g, (_, i) => kept[Number(i)])
+}
+
+// Whether a pid is still the given script: after a crash or a reboot, the pid in a file may belong to anything else.
+export const alive = (pid: string | number, script: string) =>
+    !!pid && spawnSync('ps', ['-p', String(pid), '-o', 'args='], { encoding: 'utf8' }).stdout.includes(script)
 
 const IMAGES: Record<string, string> = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp' }
 const DOCS: Record<string, string> = {

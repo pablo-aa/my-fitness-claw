@@ -4,10 +4,10 @@
 //   bun pair.ts whoami           prints `paired <number>` or `not paired`, without connecting
 //   bun pair.ts unpair           unlinks the device from the phone and forgets the session; prints `unpaired`
 // Only one connection per session at a time: the bot must be stopped first (wa.sh does it).
-import { spawn, spawnSync } from 'node:child_process'
+import { spawn } from 'node:child_process'
 import { existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { digits, stateDir, user, variants } from './lib'
+import { alive, digits, stateDir, user, variants } from './lib'
 import { createClient, fileLogger } from './wa'
 
 const dir = stateDir()
@@ -32,7 +32,7 @@ async function poll(done: (s: string) => boolean, ms: number) {
 // The background pairing, if one still runs: a new one replaces it, so two never share the session.
 function stopRun() {
     const pid = existsSync(join(dir, 'pair.pid')) ? readFileSync(join(dir, 'pair.pid'), 'utf8').trim() : ''
-    if (pid && spawnSync('ps', ['-p', pid, '-o', 'args='], { encoding: 'utf8' }).stdout.includes('pair.ts')) {
+    if (alive(pid, 'pair.ts')) {
         try { process.kill(Number(pid), 'SIGTERM') } catch {}
         Bun.sleepSync(1_000)
     }
