@@ -9,6 +9,7 @@ Everything in `<this skill's base directory>/telegram.md` applies here too, exce
 - WhatsApp has its own formatting, sent as plain text: `*bold*` (one asterisk) for the key number or word, `_italic_` for an aside.
   Nothing is escaped and there is no `format` option: never use the MarkdownV2 rules from `telegram.md`.
 - Cards go in their Telegram form (see `<this skill's base directory>/ascii.md`), inside a ``` block, so the columns line up.
+  Never a frame (`┌`, `│`, `└`): it breaks on a phone.
   The level figures there are escaped for Telegram: send them with the `\` taken off before each `\` and backtick, so they draw as in the terminal form.
 - `react` takes any emoji.
 - In the self-chat (the owner talks to the bot on their own number), the channel starts each reply with `[🦖 clawdino]` so they tell it apart from their own notes; never write that yourself.

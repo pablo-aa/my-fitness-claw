@@ -8,7 +8,7 @@ import { spawn, spawnSync } from 'node:child_process'
 import { appendFileSync, existsSync, openSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { stateDir } from './lib'
+import { alive, stateDir } from './lib'
 import { dialog, menu, plain, ready, reason, squash, warning } from './screen'
 
 const ROOT = resolve(import.meta.dir, '..')
@@ -18,6 +18,8 @@ const STATE = join(DIR, 'bot.state')
 const LOG = join(DIR, 'bot.log')
 const UP_TIMEOUT = 120_000
 const MAX_LOG = 2_000_000
+// The session starts fresh each night at this hour, in the owner's time zone.
+const FRESH_HOUR = 4
 // What the channel server reports that only the owner can fix (pairing again, stopping another copy).
 const FATAL_WA = /^(logged out|not paired|replaced|banned|locked|outdated|stuck)/
 
@@ -55,6 +57,12 @@ const mode = () => {
     return ['acceptEdits', 'default'].includes(m) ? m : 'auto'
 }
 
+// The hour now in a time zone, or in the system's when it is unknown.
+const hour = (tz?: string) => {
+    const at = (timeZone?: string) => Number(new Intl.DateTimeFormat('en', { timeZone, hour: 'numeric', hourCycle: 'h23' }).format(new Date()))
+    try { return at(tz) } catch { return at() }
+}
+
 type End = { why: string; again: boolean }
 let loginChecked = 0
 const loggedIn = async () => {
@@ -62,10 +70,7 @@ const loggedIn = async () => {
     return (await new Response(r.stdout).text()).trim() !== 'no'
 }
 // The channel server holding the WhatsApp session, as its lock file names it.
-const serverAlive = () => {
-    const pid = read('server.lock')
-    return !!pid && spawnSync('ps', ['-p', pid, '-o', 'args='], { encoding: 'utf8' }).stdout.includes('server.ts')
-}
+const serverAlive = () => alive(read('server.lock'), 'server.ts')
 let stopSession: (() => void) | undefined
 let stopping = false
 
@@ -133,6 +138,10 @@ async function session(): Promise<End> {
             }
         }
     })
+    // A session that runs for days drifts into the tone of its own old replies; a new one starts from the voice again,
+    // and Bot start schedules the next check-in. Anything worth keeping is in the fitness folder already.
+    const tz = /^- Timezone: *(\S+)/m.exec(readFileSync(join(folder, 'profile.md'), 'utf8'))?.[1]
+    const started = Date.now()
     const upTimer = setTimeout(() => up || finish(`stuck: the WhatsApp channel did not come up (${dialog(screen)})`, true), UP_TIMEOUT)
     // The channel server writes how WhatsApp is doing; a link only a new pairing fixes stops the bot.
     // A channel server that died leaves Claude Code running deaf: a new session brings it back.
@@ -148,6 +157,7 @@ async function session(): Promise<End> {
             state('running')
         }
         if (opened && !serverAlive()) finish('the WhatsApp channel stopped', true)
+        if (Date.now() - started > 3_600_000 && hour(tz) === FRESH_HOUR) finish('a fresh session for the day', true)
     }, 5_000)
     const code = await proc.exited
     clearTimeout(upTimer)

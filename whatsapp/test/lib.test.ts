@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
     admitted, chunks, classify, inboxName, learnedLid, meta, outbound, parseOwner, PREFIX, Recent, sendable, stale, stateDir,
-    variants, voted
+ variants, voted, whatsappText
 } from '../lib'
 
 const me = { pn: '5511900000000', lid: '111111111111111' }
@@ -109,6 +109,22 @@ describe('polls', () => {
         expect(voted(['a', 'b'], [])).toEqual([])
         expect(voted(['a', 'b'], null)).toEqual([])
         expect(voted(['a'], [h('z')])).toEqual([])
+    })
+})
+
+describe('voice', () => {
+    test('Markdown becomes WhatsApp formatting, cards stay as they are', () => {
+        expect(whatsappText('Remada **82,5** kg, __boa__')).toBe('Remada *82,5* kg, _boa_')
+        expect(whatsappText('## Semana\nok')).toBe('*Semana*\nok')
+        expect(whatsappText('## **Semana 3**\n### *Treino A*')).toBe('*Semana 3*\n*Treino A*')
+        expect(whatsappText('# Treino **forte**')).toBe('*Treino forte*')
+        expect(whatsappText('Treino\n  - recuo')).toBe('Treino\n  - recuo')
+        expect(whatsappText('Treino:\n  - sub item')).toBe('Treino:\n  - sub item')
+        expect(whatsappText('veja [o gráfico](https://x.y/a)')).toBe('veja o gráfico https://x.y/a')
+        expect(whatsappText('```\n**x**\n```')).toBe('```\n**x**\n```')
+        expect(whatsappText('*64,2* anotado')).toBe('*64,2* anotado')
+        expect(whatsappText('snake__case__name e `a__b__c`')).toBe('snake__case__name e `a__b__c`')
+        expect(whatsappText('[aqui](https://x.y/__a__) e https://x.y/?q=__b__')).toBe('aqui https://x.y/__a__ e https://x.y/?q=__b__')
     })
 })
 

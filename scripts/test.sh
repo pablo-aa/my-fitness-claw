@@ -35,6 +35,18 @@ check "context: channel message gets the context" "hook context.sh text.json | g
 check "context: terminal prompt gets nothing" "[ -z \"\$(hook context.sh terminal.json)\" ]"
 check "context: stays under the hook limit" "[ \$(hook context.sh text.json | wc -c) -lt 10000 ]"
 check "context: the voice block comes last, with 3 exchanges" "[ \$(hook context.sh text.json | sed -n '/^--- voice/,\$p' | grep -c '^- ') -eq 3 ]"
+# In Portuguese, the exchanges come from voice.pt-BR.md.
+cp -R "$tmp/folder" "$tmp/pt" && sed -i.bak 's/^- Language:.*/- Language: pt-BR/' "$tmp/pt/profile.md"
+pt_voice() { (cd "$tmp/pt" && HOME="$tmp" sh "$root/hooks/context.sh" < "$root/test/fixtures/text.json") | sed -n '/^--- voice/,$p' | grep '^- '; }
+check "context: Portuguese gets the Portuguese exchanges" "[ \$(pt_voice | grep -cxF -f '$root/skills/coach/voice.pt-BR.md') -eq 3 ]"
+check "context: English keeps voice.md" "[ \$(hook context.sh text.json | sed -n '/^--- voice/,\$p' | grep '^- ' | grep -cxF -f '$root/skills/coach/voice.md') -eq 3 ]"
+check "context: a check-in gets the context and the voice" "(cd \"\$tmp/folder\" && echo '{\"prompt\":\"Check-in: evening.\"}' | HOME=\"\$tmp\" sh \"\$root/hooks/context.sh\") | grep -q '^--- voice'"
+check "context: no joke unless they joked" "(cd \"\$tmp/pt\" && HOME=\"\$tmp\" sh \"\$root/hooks/context.sh\" < \"\$root/test/fixtures/text.json\") | grep -q '^No joke in this reply'"
+echo '- the coach is a calm friend' > "$tmp/pt/soul.md"
+check "context: soul.md takes the place of the voice's Who" "(cd \"\$tmp/pt\" && HOME=\"\$tmp\" sh \"\$root/hooks/context.sh\" < \"\$root/test/fixtures/text.json\") | sed -n '/^--- voice/,\$p' | grep -q '^- the coach is a calm friend' && ! (cd \"\$tmp/pt\" && HOME=\"\$tmp\" sh \"\$root/hooks/context.sh\" < \"\$root/test/fixtures/text.json\") | grep -q 'leveza vem do jeito'"
+head -c 4000 /dev/zero | tr '\0' s > "$tmp/pt/soul.md"
+check "context: a long soul.md still keeps it all under the hook limit" "[ \$(cd \"\$tmp/pt\" && HOME=\"\$tmp\" sh \"\$root/hooks/context.sh\" < \"\$root/test/fixtures/text.json\" | wc -c) -lt 10000 ]"
+rm "$tmp/pt/soul.md"
 # A copy with every part over its own cap, so the total cap is what cuts.
 cp -R "$tmp/folder" "$tmp/big"
 long=$(head -c 3000 /dev/zero | tr '\0' x)

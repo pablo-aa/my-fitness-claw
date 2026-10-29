@@ -8,13 +8,12 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js'
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js'
 import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
-import { spawnSync } from 'node:child_process'
 import { join } from 'node:path'
 import { type WaClient, type WaIncomingMessageEvent } from 'zapo-js'
 import { z } from 'zod'
 import {
-    admitted, chunks, classify, extFor, inboxName, learnedLid, meta, outbound, type Owner, parseOwner, PREFIX, Recent,
-    sendable, server, stale, stateDir, unwrap, user, voted
+    admitted, alive, chunks, classify, extFor, inboxName, learnedLid, meta, outbound, type Owner, parseOwner, PREFIX, Recent,
+    sendable, server, stale, stateDir, unwrap, user, voted, whatsappText
 } from './lib'
 import { createClient, fileLogger, writeState } from './wa'
 
@@ -146,7 +145,7 @@ export async function startChannel({ client, dir, transport, log }: ChannelOptio
         const args = (req.params.arguments ?? {}) as Record<string, unknown>
         try {
             if (req.params.name === 'reply') {
-                const text = String(args.text ?? '')
+                const text = whatsappText(String(args.text ?? ''))
                 const files = Array.isArray(args.files) ? args.files.map(String) : []
                 for (const f of files) {
                     const why = sendable(f, dir)
@@ -304,9 +303,7 @@ export async function startChannel({ client, dir, transport, log }: ChannelOptio
         log('disconnected', e.reason, e.code ?? '', why ?? `retrying in ${delay / 1000}s`)
         if (why) return giveUp(why)
         setState('connecting')
-        clearTimeout(timer)
-        timer = setTimeout(() => void connect(), delay)
-        delay = Math.min(delay * 2, 30_000)
+        retry()
     })
     async function connect() {
         try {
@@ -318,10 +315,14 @@ export async function startChannel({ client, dir, transport, log }: ChannelOptio
         } catch (e) {
             if (stopping || fatal) return
             log('connect failed', e, `retrying in ${delay / 1000}s`)
-            clearTimeout(timer)
-            timer = setTimeout(() => void connect(), delay)
-            delay = Math.min(delay * 2, 30_000)
+            retry()
         }
+    }
+    // Each new attempt waits twice as long as the last, up to 30 seconds.
+    function retry() {
+        clearTimeout(timer)
+        timer = setTimeout(() => void connect(), delay)
+        delay = Math.min(delay * 2, 30_000)
     }
 
     // Voice notes, photos and documents the owner sent stay a week.
@@ -358,9 +359,7 @@ function lock(dir: string, log: (...a: unknown[]) => void): boolean {
     const path = join(dir, 'server.lock')
     for (let i = 0; i < 20; i++) {
         const pid = Number(existsSync(path) ? readFileSync(path, 'utf8') : 0)
-        const alive = !!pid && pid !== process.pid &&
-            spawnSync('ps', ['-p', String(pid), '-o', 'args='], { encoding: 'utf8' }).stdout.includes('server.ts')
-        if (!alive) {
+        if (pid === process.pid || !alive(pid, 'server.ts')) {
             writeFileSync(`${path}.${process.pid}`, String(process.pid))
             renameSync(`${path}.${process.pid}`, path)
             return true
