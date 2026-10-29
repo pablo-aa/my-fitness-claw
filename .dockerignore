@@ -1,0 +1,9 @@
+.git
+**/.env
+CLAUDE.local.md
+**/node_modules
+research
+events.jsonl
+simulation.txt
+*.pdf
+.DS_Store
