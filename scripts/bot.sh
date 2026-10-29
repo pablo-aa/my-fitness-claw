@@ -25,6 +25,7 @@ case $MODE in acceptEdits | default) ;; *) MODE=auto ;; esac
 # Claude Code's settings and the bot token (a guard, not a sandbox: shell commands still follow the permission mode).
 # Background sessions only write in a worktree by default; the bot writes the fitness folder itself, so that is off.
 # On a server, TZ keeps the user's time zone (Timezone in profile.md) for dates and check-ins.
+# The plugin and the inbox are working directories, so reading skills, evidence and the photos the user sends never stops the session with a question.
 settings() {
   tz=$(timezone "${1:-.}")
   tz=${tz:+", \"TZ\": \"$tz\""}
@@ -34,7 +35,8 @@ settings() {
   "env": { "PATH": "$HOME/.bun/bin:$HOME/.local/bin:$PATH", "MFC_CHANNEL": "telegram"$tz },
   "worktree": { "bgIsolation": "none" },
   "permissions": {
-    "allow": ["mcp__plugin_telegram_telegram__*", "Bash(sh $ROOT/scripts/ask.sh:*)", "Bash(sh $ROOT/hooks/voice.sh:*)", "Bash(date:*)"],
+    "additionalDirectories": ["$ROOT", "$TG_DIR/inbox"],
+    "allow": ["mcp__plugin_telegram_telegram__*", "Bash(sh $ROOT/scripts/ask.sh:*)", "Bash(sh $ROOT/scripts/keep.sh:*)", "Bash(sh $ROOT/hooks/voice.sh:*)", "Bash(date:*)"],
     "deny": ["Edit(CLAUDE.md)", "Edit(.claude/**)", "Edit(~/.claude/**)", "Read(/$TG_DIR/.env)",
              "Bash(claude mcp:*)", "Bash(claude plugin:*)"]
   }

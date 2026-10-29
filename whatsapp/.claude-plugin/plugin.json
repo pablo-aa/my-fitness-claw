@@ -1,0 +1,11 @@
+{
+  "name": "whatsapp",
+  "description": "WhatsApp channel for the my-fitness-claw coach: the bot session's link to the owner's WhatsApp, started by the coach's scripts.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Pablo Arruda",
+    "url": "https://github.com/pablo-aa"
+  },
+  "license": "MIT",
+  "keywords": ["whatsapp", "channel", "mcp"]
+}

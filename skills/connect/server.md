@@ -93,6 +93,49 @@ When the user asks here, a terminal session on this computer, run it on the serv
 - Sign in again, when the bot says it is not logged in: the same `ssh -t` command as in step 4.
 - Connect something (Hevy, voice notes) or talk to the coach in a terminal there: `ssh -t <server> 'cd ~/my-fitness && TZ=<zone> PATH="$HOME/.local/bin:$HOME/.bun/bin:$PATH" claude'`, with the zone from `Timezone:`, then ask that coach.
 
+## WhatsApp
+
+The WhatsApp bot moves the same way, alongside Move above, with these steps in place of the Telegram ones:
+
+- Step 3: also run `sh "$bot"` with `wa.sh install` in place of `bot.sh` there (`wa="$(dirname "$bot")/wa.sh"`), which must print `installed`.
+- Step 6: stop it here (`sh <plugin>/scripts/wa.sh stop`): one link must never run in two places, or WhatsApp keeps kicking one of them off (`replaced`).
+- Step 7: copy its link and owner instead of the Telegram files, keeping any the server already had:
+
+  ```sh
+  cd ~/.claude/channels/whatsapp && COPYFILE_DISABLE=1 tar -cf - wa.sqlite config.json $(ls permission-mode 2>/dev/null) | ssh <server> 'umask 077 && mkdir -p ~/.claude/channels/whatsapp && cd ~/.claude/channels/whatsapp && for f in wa.sqlite config.json; do [ ! -f $f ] || cp -p $f $f.bak; done && tar -xf -'
+  ```
+
+- Step 10: `sh "$wa" start ~/my-fitness`, with a 5-minute timeout, must print `running` (anything else, as in step 7 of `whatsapp.md`), then `sh "$wa" autostart ~/my-fitness` must print `on`.
+  With no bot here yet, link it there instead: steps 4 to 7 of `whatsapp.md`, running its commands there.
+- When it fails, Use and Bring it back work the same, with `wa.sh` in place of `bot.sh` and these files in place of the Telegram ones.
+
+## Container
+
+On a server that runs Docker or Coolify, the WhatsApp bot can run as a container instead, from the `Dockerfile` at the root of this repo (Telegram is not in it yet).
+The container restarts the bot after a crash or a reboot, and one volume at `/home/coach` keeps everything: the fitness folder (`/home/coach/fitness`), the WhatsApp link and Claude Code's own files.
+
+1. The user runs `claude setup-token` on their computer and keeps the token it prints: it signs the container in with their own subscription, never an API key.
+2. Build and run it on the server from a copy of this repo, with their time zone:
+
+   ```sh
+   docker build -t clawdino .
+   docker run -d --name clawdino --restart unless-stopped --stop-timeout 30 -e CLAUDE_CODE_OAUTH_TOKEN=<token> -e TZ=<time zone> -v clawdino:/home/coach clawdino
+   ```
+
+   On Coolify: an application from this repo with the Dockerfile build pack, no domain, the same two variables, a volume at `/home/coach`, and 30 seconds to stop (`--stop-timeout 30` in its custom Docker options).
+3. To bring a fitness folder from this computer, copy it in place of the template the container started with, before linking:
+
+   ```sh
+   ssh <server> docker exec clawdino sh -c "'rm -rf /home/coach/fitness && mkdir /home/coach/fitness'"
+   COPYFILE_DISABLE=1 tar --no-xattrs -C <folder> -cf - . | ssh <server> docker exec -i clawdino tar -C /home/coach/fitness -xf -
+   ```
+
+   Without one, the container starts from the template and the setup happens in the first WhatsApp chat.
+4. Link it as in steps 4 and 5 of `whatsapp.md`, running `wa.sh` inside the container: `ssh <server> docker exec clawdino sh /opt/my-fitness-claw/scripts/wa.sh pair <number>`, then `wa.sh paired` and `wa.sh owner`.
+   The bot starts by itself within a minute of the link, and Docker shows the container as healthy once it runs; `wa.sh status` there says why when it doesn't.
+5. To update, build the new image, remove the container (`docker rm -f clawdino`) and run it again as in step 2: the volume keeps the folder and the link.
+   On Coolify, a redeploy does the same.
+
 ## Bring it back
 
 1. On the server: `sh "$bot" stop` and `sh "$bot" noautostart`; `sh "$bot" status` must print `stopped`.

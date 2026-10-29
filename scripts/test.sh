@@ -35,6 +35,18 @@ check "context: channel message gets the context" "hook context.sh text.json | g
 check "context: terminal prompt gets nothing" "[ -z \"\$(hook context.sh terminal.json)\" ]"
 check "context: stays under the hook limit" "[ \$(hook context.sh text.json | wc -c) -lt 10000 ]"
 check "context: the voice block comes last, with 3 exchanges" "[ \$(hook context.sh text.json | sed -n '/^--- voice/,\$p' | grep -c '^- ') -eq 3 ]"
+# In Portuguese, the exchanges come from voice.pt-BR.md.
+cp -R "$tmp/folder" "$tmp/pt" && sed -i.bak 's/^- Language:.*/- Language: pt-BR/' "$tmp/pt/profile.md"
+pt_voice() { (cd "$tmp/pt" && HOME="$tmp" sh "$root/hooks/context.sh" < "$root/test/fixtures/text.json") | sed -n '/^--- voice/,$p' | grep '^- '; }
+check "context: Portuguese gets the Portuguese exchanges" "[ \$(pt_voice | grep -cxF -f '$root/skills/coach/voice.pt-BR.md') -eq 3 ]"
+check "context: English keeps voice.md" "[ \$(hook context.sh text.json | sed -n '/^--- voice/,\$p' | grep '^- ' | grep -cxF -f '$root/skills/coach/voice.md') -eq 3 ]"
+check "context: a check-in gets the context and the voice" "(cd \"\$tmp/folder\" && echo '{\"prompt\":\"Check-in: evening.\"}' | HOME=\"\$tmp\" sh \"\$root/hooks/context.sh\") | grep -q '^--- voice'"
+check "context: no joke unless they joked" "(cd \"\$tmp/pt\" && HOME=\"\$tmp\" sh \"\$root/hooks/context.sh\" < \"\$root/test/fixtures/text.json\") | grep -q '^No joke in this reply'"
+echo '- the coach is a calm friend' > "$tmp/pt/soul.md"
+check "context: soul.md takes the place of the voice's Who" "(cd \"\$tmp/pt\" && HOME=\"\$tmp\" sh \"\$root/hooks/context.sh\" < \"\$root/test/fixtures/text.json\") | sed -n '/^--- voice/,\$p' | grep -q '^- the coach is a calm friend' && ! (cd \"\$tmp/pt\" && HOME=\"\$tmp\" sh \"\$root/hooks/context.sh\" < \"\$root/test/fixtures/text.json\") | grep -q 'leveza vem do jeito'"
+head -c 4000 /dev/zero | tr '\0' s > "$tmp/pt/soul.md"
+check "context: a long soul.md still keeps it all under the hook limit" "[ \$(cd \"\$tmp/pt\" && HOME=\"\$tmp\" sh \"\$root/hooks/context.sh\" < \"\$root/test/fixtures/text.json\" | wc -c) -lt 10000 ]"
+rm "$tmp/pt/soul.md"
 # A copy with every part over its own cap, so the total cap is what cuts.
 cp -R "$tmp/folder" "$tmp/big"
 long=$(head -c 3000 /dev/zero | tr '\0' x)
@@ -116,6 +128,52 @@ unread() { : > "$fake/tg"; for n in "$@"; do echo "{\"ok\":true,\"result\":{\"ur
 : > "$fake/tg"
 (cd "$tmp/folder" && FAKE="$fake" CLAUDE_CONFIG_DIR="$tmp/cfg" PATH="$fake/bin:$PATH" sh "$root/hooks/voice.sh" < "$root/test/fixtures/voice.json" >/dev/null)
 check "voice: a voice message gets past the early exit to Telegram" "grep -q '/getFile?file_id=' '$fake/curl.in'"
+
+# WhatsApp: the hooks with its channel's tags, and wa.sh's offline commands, next to the fake Telegram bot.
+wa_dir="$tmp/cfg/channels/whatsapp"
+mkdir -p "$wa_dir/inbox" "$tmp/elsewhere/inbox"
+cat > "$fake/bin/uvx" <<'EOF'
+#!/bin/sh
+# Fake uvx: "transcribes" by writing a fixed text where whisper would.
+while [ $# -gt 0 ]; do case $1 in --output_dir) out=$2; shift ;; *.ogg) f=$1 ;; esac; shift; done
+n=$(basename "$f"); echo "sixty four two" > "$out/${n%.*}.txt"
+EOF
+chmod +x "$fake/bin/uvx"
+for d in "$wa_dir" "$tmp/elsewhere"; do echo voice > "$d/inbox/1780000000000-3EB0C0FFEE02.ogg"; done
+wa_hook() { sed "s|@WA_DIR@|$2|" "$root/test/fixtures/$1" | (cd "$tmp/folder" && HOME="$tmp" CLAUDE_CONFIG_DIR="$tmp/cfg" FAKE="$fake" PATH="$fake/bin:$PATH" sh "$root/hooks/$3"); }
+check "first-run: the WhatsApp bot session gets nothing" "[ -z \"\$(cd \"\$tmp\" && HOME=\"\$tmp\" MFC_CHANNEL=whatsapp sh \"\$root/hooks/first-run.sh\")\" ]"
+: > "$fake/curl.in"
+check "context: a WhatsApp message gets the context" "wa_hook wa-text.json '' context.sh | grep -q 'Fitness context'"
+sleep 1
+check "context: a WhatsApp message never calls Telegram" "[ ! -s '$fake/curl.in' ]"
+check "voice: a WhatsApp voice note from the inbox is transcribed" "wa_hook wa-voice.json '$wa_dir' voice.sh | grep -q 'sixty four two'"
+check "voice: a WhatsApp path outside the inbox is ignored" "[ -z \"\$(wa_hook wa-voice.json '$tmp/elsewhere' voice.sh)\" ]"
+check "voice: a path climbing out of the inbox is ignored" "[ -z \"\$(wa_hook wa-voice.json '$wa_dir/inbox/..' voice.sh)\" ]"
+wa() { env HOME="$tmp" CLAUDE_CONFIG_DIR="$tmp/cfg" FAKE="$fake" PATH="$fake/bin:$PATH" sh "$root/scripts/wa.sh" "$@" 2>&1; }
+check "json whatsapp settings" "wa settings '$tmp/folder' | node -e 'JSON.parse(require(\"fs\").readFileSync(0))'"
+check "wa settings: the plugin on, the WhatsApp session off limits" "wa settings | grep -q '\"whatsapp@my-fitness-claw\": true' && wa settings | grep -q 'Read(/$wa_dir/wa.sqlite'"
+check "wa settings: photos in the inbox are read without a question" "wa settings | node -e 'process.exit(JSON.parse(require(\"fs\").readFileSync(0)).permissions.additionalDirectories.includes(\"$wa_dir/inbox\") ? 0 : 1)'"
+echo photo > "$wa_dir/inbox/1780000000000-3EB0C0FFEE03.jpg"
+keep() { (cd "$tmp/folder" && HOME="$tmp" CLAUDE_CONFIG_DIR="$tmp/cfg" sh "$root/scripts/keep.sh" "$@" 2>&1); }
+check "keep: a photo from the inbox lands in the folder" "keep '$wa_dir/inbox/1780000000000-3EB0C0FFEE03.jpg' photos/a.jpg | grep -q 'kept photos/a.jpg' && grep -q photo '$tmp/folder/photos/a.jpg'"
+check "keep: never over an existing file" "! keep '$wa_dir/inbox/1780000000000-3EB0C0FFEE03.jpg' photos/a.jpg >/dev/null"
+check "keep: only from an inbox" "! keep '$tmp/elsewhere/inbox/1780000000000-3EB0C0FFEE02.ogg' x.ogg >/dev/null && ! keep '$wa_dir/inbox/../config.json' x.json >/dev/null"
+check "keep: only into the folder" "! keep '$wa_dir/inbox/1780000000000-3EB0C0FFEE03.jpg' /tmp/x.jpg >/dev/null && ! keep '$wa_dir/inbox/1780000000000-3EB0C0FFEE03.jpg' .claude/x.jpg >/dev/null && ! keep '$wa_dir/inbox/1780000000000-3EB0C0FFEE03.jpg' ../x.jpg >/dev/null"
+check "keep: only a photo or a PDF, never a CLAUDE.md or a hidden folder" "! keep '$wa_dir/inbox/1780000000000-3EB0C0FFEE03.jpg' log/CLAUDE.md >/dev/null && ! keep '$wa_dir/inbox/1780000000000-3EB0C0FFEE03.jpg' log/.claude/x.jpg >/dev/null && ! keep '$wa_dir/inbox/1780000000000-3EB0C0FFEE03.jpg' -n.jpg >/dev/null"
+mkdir -p "$tmp/outside" && ln -s "$tmp/outside" "$tmp/folder/out" && ln -s "$tmp/outside/evil.jpg" "$tmp/folder/dang.jpg"
+check "keep: never through a link out of the folder" "! keep '$wa_dir/inbox/1780000000000-3EB0C0FFEE03.jpg' out/x.jpg >/dev/null && ! keep '$wa_dir/inbox/1780000000000-3EB0C0FFEE03.jpg' dang.jpg >/dev/null && [ -z \"\$(ls '$tmp/outside')\" ]"
+rm "$tmp/folder/out" "$tmp/folder/dang.jpg"
+mkdir -p "$tmp/cfg/channels/telegram/inbox" && echo photo > "$tmp/cfg/channels/telegram/inbox/1780000000000-AQAD.jpg"
+check "keep: a photo from the Telegram inbox too" "keep '$tmp/cfg/channels/telegram/inbox/1780000000000-AQAD.jpg' photos/b.jpg | grep -q 'kept photos/b.jpg'"
+check "bot settings: photos in the inbox are read and kept without a question" "bot settings | node -e 'process.exit(JSON.parse(require(\"fs\").readFileSync(0)).permissions.additionalDirectories.includes(\"$tmp/cfg/channels/telegram/inbox\") ? 0 : 1)' && bot settings | grep -q 'scripts/keep.sh:'"
+check "wa settings: keep.sh runs without a question" "wa settings | grep -q 'scripts/keep.sh:'"
+check "wa owner: a number, digits only" "[ \"\$(wa owner '+55 61 99999-0000')\" = 'owner 5561999990000' ] && grep -q '\"owner\": \"5561999990000\"' '$wa_dir/config.json'"
+check "wa owner: the self-chat" "[ \"\$(wa owner self)\" = 'owner self' ] && grep -q '\"owner\": \"self\"' '$wa_dir/config.json'"
+check "wa owner: refuses a short number" "! wa owner 123 >/dev/null"
+check "wa status: stopped without a bot" "[ \"\$(wa status)\" = stopped ]"
+echo 'stuck: logged out' > "$wa_dir/bot.state"
+check "wa status: a bot that stopped for a reason says why" "[ \"\$(wa status)\" = 'stuck: logged out' ]"
+rm "$wa_dir/bot.state" "$wa_dir/config.json"
 if command -v bun >/dev/null || [ -x "$HOME/.bun/bin/bun" ]; then
   echo ok > "$fake/p"
   unread 0
@@ -129,6 +187,7 @@ if command -v bun >/dev/null || [ -x "$HOME/.bun/bin/bun" ]; then
   echo 'Not logged in · Please run /login' > "$fake/p"
   check "bot ready: no without a login" "[ \"\$(bot ready)\" = no ]"
   check "bot start: refuses without a login" "bot start '$tmp/folder' | grep -q '^not logged in'"
+  check "wa start: refuses without a login" "wa start '$tmp/folder' | grep -q '^not logged in'"
   touch "$fake/offline"
   check "bot ready: a login error is not mistaken for no connection" "[ \"\$(bot ready)\" = no ]"
   echo 'API Error: Connection error.' > "$fake/p"
@@ -139,6 +198,12 @@ if command -v bun >/dev/null || [ -x "$HOME/.bun/bin/bun" ]; then
   echo 'Workspace not trusted. Run `claude` in the folder once and accept the trust prompt, then retry.' > "$fake/refuse"
   check "bot start: shows Claude Code's own refusal" "bot start '$tmp/folder' | grep -q '^Workspace not trusted'"
   rm "$fake/refuse"
+  check "wa start: refuses an untrusted folder" "wa start '$tmp/folder' | grep -q '^folder not trusted'"
+  printf '{"projects":{"%s":{"hasTrustDialogAccepted":true}}}\n' "$(cd "$tmp/folder" && pwd -P)" > "$tmp/cfg/.claude.json"
+  check "wa start: refuses without an owner" "wa start '$tmp/folder' | grep -q '^no owner'"
+  wa owner self >/dev/null
+  check "wa start: refuses before pairing" "wa start '$tmp/folder' | grep -q '^not paired'"
+  rm -f "$tmp/cfg/.claude.json" "$wa_dir/config.json"
   session working '' 'Bot\033[1Cstarted'
   echo '{"plugin:telegram:telegram":{"timestamp":1,"id":"x"},"other":{"timestamp":1,"id":"y"}}' > "$tmp/cfg/mcp-needs-auth-cache.json"
   mkdir -p "$tmp/cfg/jobs" && echo '["feedbeef"]' > "$tmp/cfg/jobs/pins.json"
@@ -203,6 +268,7 @@ sed -i.bak 's/^- Check-ins:.*/&\
 - Timezone: Pacific\/Kiritimati\
 - Server: sam@example.net/' "$tmp/moved/profile.md"
 check "bot start: refuses in a folder that moved to a server" "bot start '$tmp/moved' | grep -q '^the bot runs on sam@example.net'"
+check "wa start: refuses in a folder that moved to a server" "wa start '$tmp/moved' | grep -q '^the bot runs on sam@example.net'"
 check "bot settings: TZ from Timezone" "bot settings '$tmp/moved' | node -e 'process.exit(JSON.parse(require(\"fs\").readFileSync(0)).env.TZ === \"Pacific/Kiritimati\" ? 0 : 1)'"
 check "bot settings: no TZ without Timezone" "bot settings '$tmp/folder' | node -e 'process.exit(JSON.parse(require(\"fs\").readFileSync(0)).env.TZ === undefined ? 0 : 1)'"
 # The hooks run 26 hours behind the folder's zone, so the two dates always differ.
@@ -234,6 +300,43 @@ check "bot autostart: at boot, runs the installed version's bot" "[ \"\$(sh '$tm
 check "bot autostart: cron logs each boot" "grep -q '>> \"$tmp/cfg/channels/telegram/boot.log\" 2>&1 # my-fitness-claw bot\$' '$fake/crontab'"
 check "bot noautostart: removes only its line" "[ \"\$(bot noautostart)\" = off ] && ! grep -q 'my-fitness-claw' '$fake/crontab' && grep -qx '0 3 \* \* \* backup' '$fake/crontab' && [ ! -f '$tmp/cfg/channels/telegram/autostart.sh' ]"
 
+# The container's entrypoint against a fake claude, bun and sleep: the sleeps link WhatsApp, link it again once the
+# bot has stopped, and end the entrypoint after the second run.
+ct="$tmp/ct"
+mkdir -p "$ct/bin" "$ct/home"
+printf '#!/bin/sh\necho "$*" >> "$CT/claude"\n' > "$ct/bin/claude"
+cat > "$ct/bin/bun" <<'EOF'
+#!/bin/sh
+case "$*" in
+  *whoami*) [ -f "$CT/paired" ] && echo 'paired 5511900000000' || echo 'not paired' ;;
+  *launch.ts*) echo "bun $*"; echo run >> "$CT/runs"; echo 'stuck: replaced' > "$HOME/.claude/channels/whatsapp/bot.state" ;;
+esac
+EOF
+cat > "$ct/bin/sleep" <<'EOF'
+#!/bin/sh
+wa="$HOME/.claude/channels/whatsapp"
+runs=$(cat "$CT/runs" 2>/dev/null | wc -l | tr -d " ")
+echo x >> "$CT/sleeps$runs"
+case $runs in
+  0) touch "$CT/paired" && echo '{ "owner": "self" }' > "$wa/config.json" ;;
+  1) [ "$(wc -l < "$CT/sleeps1")" -ge 3 ] && touch -t 203001010000 "$wa/config.json" ;;
+  *) kill "$PPID" ;;
+esac
+exit 0
+EOF
+chmod +x "$ct/bin/claude" "$ct/bin/bun" "$ct/bin/sleep"
+container() { rm -f "$ct/runs" "$ct"/sleeps* "$ct/claude"; env HOME="$ct/home" CT="$ct" PATH="$ct/bin:$PATH" sh "$root/scripts/container.sh" 2>&1; }
+container > "$ct/out"
+check "container: answers Claude Code's first-run and trust screens for the folder" "node -e 'const c = JSON.parse(require(\"fs\").readFileSync(\"$ct/home/.claude.json\")); process.exit(c.hasCompletedOnboarding && c.projects[\"$ct/home/fitness\"].hasTrustDialogAccepted ? 0 : 1)'"
+check "container: installs the plugins again from the image" "grep -qx 'plugin marketplace add $root' '$ct/claude' && grep -qx 'plugin uninstall my-fitness-claw@my-fitness-claw' '$ct/claude' && grep -qx 'plugin uninstall whatsapp@my-fitness-claw' '$ct/claude' && grep -qx 'plugin install my-fitness-claw@my-fitness-claw' '$ct/claude' && grep -qx 'plugin install whatsapp@my-fitness-claw' '$ct/claude'"
+check "container: a new folder starts from the template" "cmp -s '$root/template/profile.md' '$ct/home/fitness/profile.md'"
+check "container: waits for WhatsApp, then runs the bot in the folder" "grep -q 'waiting for WhatsApp' '$ct/out' && grep -qx 'bun $root/whatsapp/launch.ts run $ct/home/fitness' '$ct/out'"
+check "container: a stuck bot waits for the link to change, then runs again" "[ \$(wc -l < '$ct/sleeps1') -ge 3 ] && [ \$(wc -l < '$ct/runs') -eq 2 ] && grep -q 'the bot stopped (stuck: replaced)' '$ct/out'"
+echo '- Name: Sam' >> "$ct/home/fitness/profile.md"
+container > "$ct/out"
+check "container: a restart keeps the folder and goes straight to the bot" "grep -q '^- Name: Sam' '$ct/home/fitness/profile.md' && ! grep -q waiting '$ct/out' && [ ! -f '$ct/sleeps0' ]"
+check "container: .env and local notes stay out of the image" "grep -qxF '**/.env' '$root/.dockerignore' && grep -qx CLAUDE.local.md '$root/.dockerignore'"
+
 # The server against an unreachable Telegram: HTTP endpoints only.
 port=18787
 code() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
@@ -245,6 +348,7 @@ while [ "$(code http://127.0.0.1:$port/health)" = 000 ] && [ $i -lt 20 ]; do sle
 check "server: health waits for Telegram" "[ \$(code http://127.0.0.1:$port/health) = 503 ]"
 check "server: unknown code is 404" "[ \$(code http://127.0.0.1:$port/claim/0123456789abcdef0123456789abcdef) = 404 ]"
 check "server: valid ping is 204" "[ \$(code -X POST -d '{\"id\":\"0123456789abcdef0123456789abcdef\",\"day\":\"2026-06-01\",\"channel\":\"terminal\",\"v\":\"0.1.0\"}' http://127.0.0.1:$port/ping) = 204 ]"
+check "server: a WhatsApp ping is 204" "[ \$(code -X POST -d '{\"id\":\"0123456789abcdef0123456789abcdef\",\"day\":\"2026-06-01\",\"channel\":\"whatsapp\",\"v\":\"0.1.0\"}' http://127.0.0.1:$port/ping) = 204 ]"
 check "server: bad ping is 400" "[ \$(code -X POST -d '{\"id\":\"x\"}' http://127.0.0.1:$port/ping) = 400 ]"
 check "server: texts never send the user to a terminal" "! sed -n '/^const TEXT/,/^};/p' '$root/server/clawdino.mjs' | grep -qi terminal"
 check "server: the log exists and has no token" "[ -s '$tmp/events.jsonl' ] && ! grep -q 'CLAWDINO\\|test' '$tmp/events.jsonl'"
